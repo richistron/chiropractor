@@ -145,6 +145,38 @@ define(function(require) {
                    expect(this.view.$el.html()).to.contain('Error 2');
                    expect(this.view.$el.html()).to.not.contain('Error 3');
                });
+
+            it('should clear form errors when the fields change', function() {
+                   var model = new Chiropractor.Model();
+
+                   this.view = new (Views.Form.extend({
+                       template: '{{ formfield "text" model "field1" }}' +
+                           '{{ formfield "text" model "field2" }}'
+                   }))({model: model}).render();
+
+                   model.parse({
+                       data: {},
+                       meta: {
+                           status: 400,
+                           errors: {
+                               form: {
+                                   '__all__': ['Error 1'],
+                                   'field1': ['Error 2'],
+                                   'field2': ['Error 3']
+                               }
+                           }
+                       }
+                   });
+
+                   expect(this.view.$el.html()).to.contain('Error 1');
+                   expect(this.view.$el.html()).to.contain('Error 2');
+                   expect(this.view.$el.html()).to.contain('Error 3');
+
+                   model.set('field2', 'newval');
+                   expect(this.view.$el.html()).to.contain('Error 1');
+                   expect(this.view.$el.html()).to.contain('Error 2');
+                   expect(this.view.$el.html()).to.not.contain('Error 3');
+               });
         });
     };
 });
