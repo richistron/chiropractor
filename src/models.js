@@ -5,7 +5,9 @@ define(function(require) {
     var Backbone = require('backbone'),
         _ = require('underscore'),
         auth = require('./models/auth'),
+        Validation = require('backbone.validation'),
         Base;
+
 
     Base = Backbone.Model.extend({
         sync: function(method, model, options) {
@@ -18,6 +20,7 @@ define(function(require) {
         },
 
         parse: function(resp, options) {
+            options = options || {};
             // We need to unwrap the old WiserTogether API envelop format.
             if (resp.data && resp.meta) {
                 if (parseInt(resp.meta.status, 10) >= 400) {
@@ -50,6 +53,11 @@ define(function(require) {
             return Backbone.Model.prototype.parse.apply(this, arguments);
         },
 
+        fieldId: function(field, prefix) {
+            prefix = prefix || 'formfield';
+            return [prefix, field, this.cid].join('-');
+        },
+
         set: function(attrs, options) {
             // We need to allow the legacy errors to short circuit the Backbone
             // success handler in the case of a legacy server error.
@@ -61,6 +69,8 @@ define(function(require) {
             return Backbone.Model.prototype.set.apply(this, arguments);
         }
     });
+
+    _.extend(Base.prototype, Validation.mixin);
 
     return {
         Base: Base,

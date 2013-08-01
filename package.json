@@ -1,6 +1,6 @@
 {
   "name": "chiropractor",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Straighten out your Backbone",
   "keywords": [
     "backbone",
@@ -14,6 +14,7 @@
     "url": "git://github.com/wisertogether/chiropractor.git"
   },
   "devDependencies": {
+    "grunt-bump": "0.0.11",
     "uglify-js": "1.3.5",
     "grunt": "0.4.1",
     "grunt-cli": "0.1.9",

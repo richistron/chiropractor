@@ -7,17 +7,11 @@ define(function(require) {
         view;
 
     view = Chiropractor.View.extend({
-        render: function() {
-            this.$el.html('one');
-            return this;
-        }
+        template: 'one'
     });
 
     view.View = Chiropractor.View.extend({
-        render: function() {
-            this.$el.html('two');
-            return this;
-        }
+        template: 'two'
     });
 
     view.Context = Chiropractor.View.extend({
@@ -28,10 +22,10 @@ define(function(require) {
     });
 
     view.Leak = Chiropractor.View.extend({
+        template: '{{ one }} - {{ two }} - {{ three }}',
         initialize: function(options) {
             this.context = options;
-        },
-        template: '{{ one }} - {{ two }} - {{ three }}'
+        }
     });
 
     return view;
