@@ -23,7 +23,6 @@
     "karma.conf.js",
     "lib",
     "node_modules",
-    "specs",
-    "src"
+    "specs"
   ]
 }
