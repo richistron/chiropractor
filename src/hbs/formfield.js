@@ -26,7 +26,11 @@ define(function(require) {
         },
 
         inputChanged: function() {
-            this.model.set(this.field, this.$('[name=' + this.field + ']').val());
+            this.model.set(
+                this.field,
+                this.$('[name=' + this.field + ']').val(),
+                {validate: true}
+            );
         },
 
         render: function() {
