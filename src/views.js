@@ -8,7 +8,8 @@ define(function(require) {
         Handlebars = require('handlebars'),
         removeHandlerTest = $('<span></span>'),
         removeHandlerExists = false,
-        Base;
+        Base,
+        Form;
 
     removeHandlerTest.on('remove', function() { removeHandlerExists = true; });
     removeHandlerTest.remove();
@@ -76,7 +77,49 @@ define(function(require) {
         }
     });
 
+    Form = Base.extend({
+        initialize: function() {
+            Base.prototype.initialize.apply(this, arguments);
+            this.listenForErrors(this.model);
+            this.listenForErrors(this.collection);
+        },
+
+        listenForErrors: function(obj) {
+            if (obj) {
+                if (obj instanceof Backbone.Model) {
+                    this.listenTo(obj, 'invalid', this.renderFormErrors);
+                }
+                else if (obj instanceof Backbone.Collection) {
+                    obj.each(function(model) {
+                        this.listenTo(model, 'invalid', this.renderFormErrors);
+                    }, this);
+                }
+                else {
+                    throw new Error('Invalid object to associate errors with.');
+                }
+            }
+        },
+
+        renderFormErrors: function(model, errors) {
+            _(errors).each(function(errorMessages, field) {
+                var help;
+
+                if (field === '__all__') {
+                    help = $('<div class="errors"></div>');
+                    this.$el.prepend(help);
+                }
+                else {
+                    help = this.$('#container-' + model.fieldId(field))
+                        .find('.help-inline');
+                }
+
+                help.html(errorMessages.join(', '));
+            }, this);
+        }
+    });
+
     return {
-        Base: Base
+        Base: Base,
+        Form: Form
     };
 });

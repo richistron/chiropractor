@@ -18,6 +18,7 @@ define(function(require) {
         },
 
         parse: function(resp, options) {
+            options = options || {};
             // We need to unwrap the old WiserTogether API envelop format.
             if (resp.data && resp.meta) {
                 if (parseInt(resp.meta.status, 10) >= 400) {
@@ -48,6 +49,11 @@ define(function(require) {
                 return resp.data;
             }
             return Backbone.Model.prototype.parse.apply(this, arguments);
+        },
+
+        fieldId: function(field, prefix) {
+            prefix = prefix || 'formfield';
+            return [prefix, field, this.cid].join('-');
         },
 
         set: function(attrs, options) {

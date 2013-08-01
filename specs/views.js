@@ -10,6 +10,7 @@ define(function(require) {
         describe = require('mocha').describe,
         it = require('mocha').it,
         Handlebars = require('handlebars'),
+        Chiropractor = require('chiropractor'),
         Views = require('chiropractor/views');
 
     return function() {
@@ -36,6 +37,7 @@ define(function(require) {
             it('should call the remove method when an ' +
                'ancestor of the element has its content replaced.', function() {
                    var content = $('<div><div class="subcontent"></div></div>'),
+
                        view1 = new View(),
                        view2 = new View(),
                        spy1 = this.sandbox.spy(view1, 'spy'),
@@ -106,6 +108,36 @@ define(function(require) {
 
                 expect(view.render().$el.html())
                     .to.equal('Test 1 - 2');
+                view.remove();
+            });
+        });
+
+        describe('Form', function() {
+            it('should render form errors when the model triggers an invalid ' +
+               'event', function() {
+                var model = new Chiropractor.Model(),
+                    view = new (Views.Form.extend({
+                        template: '{{ formfield "text" model "field1" }}'
+                    }))({model: model}).render();
+
+                model.parse({
+                    data: {},
+                    meta: {
+                        status: 400,
+                        errors: {
+                            form: {
+                                '__all__': ['Error 1'],
+                                'field1': ['Error 2'],
+                                'fakeField': ['Error 3']
+                            }
+                        }
+                    }
+                });
+
+                expect(view.$el.html()).to.contain('Error 1');
+                expect(view.$el.html()).to.contain('Error 2');
+                expect(view.$el.html()).to.not.contain('Error 3');
+
                 view.remove();
             });
         });

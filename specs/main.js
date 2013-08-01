@@ -17,6 +17,10 @@ define(function(require) {
             describe('view', function() {
                 require('specs/hbs/view')();
             });
+
+            describe('formfield', function() {
+                require('specs/hbs/formfield')();
+            });
         });
     };
 });

@@ -13,6 +13,9 @@ require.config({
     paths: {
         // Application Dependencies
         'handlebars':         'bower_components/require-handlebars-plugin/Handlebars',
+        'hbs':                'bower_components/require-handlebars-plugin/hbs',
+        'i18nprecompile':     'bower_components/require-handlebars-plugin/hbs/i18nprecompile',
+        'json2':              'bower_components/require-handlebars-plugin/hbs/json2',
         'json3':              'bower_components/json3/lib/json3',
         'underscore':         'bower_components/underscore/underscore',
         'backbone':           'bower_components/backbone/backbone',
