@@ -172,6 +172,28 @@ define(function(require) {
                 expect($el.find('option').length).to.equal(3);
                 expect($el.val()).to.equal('test');
             });
+
+            it('should trigger a model change event when the value of the ' +
+               'select is changed.', function() {
+                   var View = Chiropractor.View.extend({
+                        template: '{{ formfield "select" model "field1" options=opts blank="-----" }}'
+                   }),
+                   spy = this.sandbox.spy();
+
+                   this.view = new View({
+                       model: this.model,
+                       context: {opts: [{value: '1', label: 'One'}]}
+                   });
+                   this.view.listenTo(this.model, 'change:field1', spy);
+
+                   this.dom.html(this.view.render().el);
+
+                   expect(spy.callCount).to.equal(0);
+                   expect(this.model.get('field1')).to.be.a('undefined');
+                   this.view.$('select').val('1').change();
+                   expect(spy.callCount).to.equal(1);
+                   expect(this.model.get('field1')).to.equal('1');
+            });
         });
     };
 });

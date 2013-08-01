@@ -11,7 +11,8 @@ define(function(require) {
 
     View = Backbone.View.extend({
         events: {
-            'change input': 'inputChanged'
+            'change input': 'inputChanged',
+            'change select': 'inputChanged'
         },
 
         initialize: function(options) {
