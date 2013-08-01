@@ -8,6 +8,7 @@ define(function(require) {
         Handlebars = require('handlebars'),
         removeHandlerTest = $('<span></span>'),
         removeHandlerExists = false,
+        placeholderId,
         Base,
         Form;
 
@@ -24,6 +25,10 @@ define(function(require) {
         };
     }
 
+    placeholderId = function(view) {
+        return 'chiropractorId' + view.cid;
+    };
+
     Base = Backbone.View.extend({
         initialize: function(options) {
             options = options || {};
@@ -39,6 +44,7 @@ define(function(require) {
 
         _addChild: function(view) {
             this._childViews.push(view);
+            return '<' + view.el.tagName + ' id="' + placeholderId(view) + '">';
         },
 
         context: function() {
@@ -62,7 +68,7 @@ define(function(require) {
             }
 
             _(this._childViews).each(function(view) {
-                this.$('#chiropractorId' + view.cid).replaceWith(view.el);
+                this.$('#' + placeholderId(view)).replaceWith(view.el);
             }, this);
             return this;
         },

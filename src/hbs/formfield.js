@@ -5,11 +5,46 @@ define(function(require) {
     var _ = require('underscore'),
         Backbone = require('backbone'),
         Handlebars = require('handlebars'),
+        viewHelper = require('./view'),
         fieldTemplates = {},
-        unregister, register;
+        View, unregister, register;
 
-    register = function(type, template) {
-        fieldTemplates[type] = template;
+    View = Backbone.View.extend({
+        events: {
+            'change input': 'inputChanged'
+        },
+
+        initialize: function(options) {
+            Backbone.View.prototype.initialize.apply(this, arguments);
+
+            _.bindAll(this, 'remove');
+            this.field = options.field;
+            this.template = options.template;
+            this.config = options.config;
+            this.$el.on('remove', this.remove);
+        },
+
+        inputChanged: function() {
+            this.model.set(this.field, this.$('[name=' + this.field + ']').val());
+        },
+
+        render: function() {
+            this.$el.html(this.template(this.config));
+            return this;
+        },
+
+        remove: function() {
+            this.$el.off('remove', this.remove);
+            Backbone.View.prototype.remove.call(this);
+        }
+    });
+
+    register = function(type, template, ViewClass) {
+        ViewClass = ViewClass || View;
+        fieldTemplates[type] = {
+            template: template,
+            view: ViewClass
+        };
     };
 
     unregister = function(type) {
@@ -30,10 +65,10 @@ define(function(require) {
         //      {{ formfield 'text' model 'fieldname' [attrName="attrValue"]*}}
         options = options || {};
 
-        var template = fieldTemplates[type],
+        var formfield = fieldTemplates[type],
             opts = options.hash || {};
 
-        if (!template) {
+        if (!formfield) {
             throw new Error('Unregistered formfield template: ' + type);
         }
 
@@ -46,7 +81,12 @@ define(function(require) {
             help: ''
         });
 
-        return new Handlebars.SafeString(template(opts));
+        return viewHelper.call(this, formfield.view, {
+            template: formfield.template,
+            field: fieldName,
+            model: model,
+            config: opts
+        });
     });
 
     return {

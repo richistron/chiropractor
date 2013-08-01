@@ -4,13 +4,15 @@ define(function(require) {
 
     var _ = require('underscore'),
         Backbone = require('backbone'),
-        Handlebars = require('handlebars');
+        Handlebars = require('handlebars'),
+        view;
 
-    Handlebars.registerHelper('view', function() {
+    view = function() {
         // template helper in the form of:
         //
         //      {{ view "path/to/require/module[|ViewName]" [context] }}
-        var View, view, options, requirePath, viewName, attrs, requireBits;
+        var View, view, options, requirePath,
+            viewName, attrs, requireBits, placeholder;
 
         options = arguments[arguments.length - 1];
         attrs = arguments[1] || {};
@@ -30,13 +32,14 @@ define(function(require) {
         }
         view = new View(attrs).render();
 
-        this.declaringView._addChild(view);
+        placeholder = this.declaringView._addChild(view);
 
         // Return a placeholder that the Chiropractor.View can replace with
         // the child view appended above.
-        return new Handlebars.SafeString(
-            '<' + view.el.tagName + ' id="chiropractorId' + view.cid + '">' +
-            '</div>'
-        );
-    });
+        return new Handlebars.SafeString(placeholder);
+    };
+
+    Handlebars.registerHelper('view', view);
+
+    return view;
 });

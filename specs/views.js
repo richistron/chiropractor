@@ -14,6 +14,12 @@ define(function(require) {
         Views = require('chiropractor/views');
 
     return function() {
+        afterEach(function() {
+            if (this.view) {
+                this.view.remove();
+            }
+        });
+
         describe('Base', function() {
             var View = Views.Base.extend({
                 spy: function() {},
@@ -60,22 +66,22 @@ define(function(require) {
                'template attribute.', function() {
                    var View = Views.Base.extend({
                             template: 'string template'
-                       }),
-                       view = (new View()).render();
+                       });
 
-                   expect(view.$el.html()).to.equal('string template');
-                   view.remove();
+                   this.view = (new View()).render();
+
+                   expect(this.view.$el.html()).to.equal('string template');
                });
 
             it('should allow a compiled handlebars template to be ' +
                'provided.', function() {
                    var View = Views.Base.extend({
                            template: Handlebars.compile('compiled')
-                       }),
-                       view = (new View()).render();
+                       });
 
-                   expect(view.$el.html()).to.equal('compiled');
-                   view.remove();
+                   this.view = (new View()).render();
+
+                   expect(this.view.$el.html()).to.equal('compiled');
                });
 
             it('should allow for a context function to be defined by ' +
@@ -87,59 +93,58 @@ define(function(require) {
                                    one: 'one'
                                };
                            }
-                       }),
-                       view = (new View()).render();
+                       });
 
-                   expect(view.$el.html()).to.equal('one thing');
-                   view.remove();
+                   this.view = (new View()).render();
+
+                   expect(this.view.$el.html()).to.equal('one thing');
                });
 
             it('should allow passing a `context` argument to extend the ' +
                'default context with.', function() {
-                var View = Views.Base.extend({
+                   var View = Views.Base.extend({
                         template: 'Test {{ one }} - {{ two }}'
-                    }),
-                    view = new View({
+                    });
+
+                   this.view = new View({
                         context: {
                             one: 1,
                             two: 2
                         }
                     });
 
-                expect(view.render().$el.html())
+                   expect(this.view.render().$el.html())
                     .to.equal('Test 1 - 2');
-                view.remove();
-            });
+               });
         });
 
         describe('Form', function() {
             it('should render form errors when the model triggers an invalid ' +
                'event', function() {
-                var model = new Chiropractor.Model(),
-                    view = new (Views.Form.extend({
-                        template: '{{ formfield "text" model "field1" }}'
-                    }))({model: model}).render();
+                   var model = new Chiropractor.Model();
 
-                model.parse({
-                    data: {},
-                    meta: {
-                        status: 400,
-                        errors: {
-                            form: {
-                                '__all__': ['Error 1'],
-                                'field1': ['Error 2'],
-                                'fakeField': ['Error 3']
-                            }
-                        }
-                    }
-                });
+                   this.view = new (Views.Form.extend({
+                       template: '{{ formfield "text" model "field1" }}'
+                   }))({model: model}).render();
 
-                expect(view.$el.html()).to.contain('Error 1');
-                expect(view.$el.html()).to.contain('Error 2');
-                expect(view.$el.html()).to.not.contain('Error 3');
+                   model.parse({
+                       data: {},
+                       meta: {
+                           status: 400,
+                           errors: {
+                               form: {
+                                   '__all__': ['Error 1'],
+                                   'field1': ['Error 2'],
+                                   'fakeField': ['Error 3']
+                               }
+                           }
+                       }
+                   });
 
-                view.remove();
-            });
+                   expect(this.view.$el.html()).to.contain('Error 1');
+                   expect(this.view.$el.html()).to.contain('Error 2');
+                   expect(this.view.$el.html()).to.not.contain('Error 3');
+               });
         });
     };
 });
