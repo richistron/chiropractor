@@ -44,7 +44,7 @@ define(function(require) {
 
         _addChild: function(view) {
             this._childViews.push(view);
-            return '<' + view.el.tagName + ' id="' + placeholderId(view) + '">';
+            return '<' + view.el.tagName + ' id="' + placeholderId(view) + '"></div>';
         },
 
         context: function() {
