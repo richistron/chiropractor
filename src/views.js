@@ -6,13 +6,18 @@ define(function(require) {
         $ = require('jquery'),
         Backbone = require('backbone'),
         Handlebars = require('handlebars'),
+        removeHandlerTest = $('<span></span>'),
+        removeHandlerExists = false,
         Base;
 
-    if (!$.event.special.remove) {
+    removeHandlerTest.on('remove', function() { removeHandlerExists = true; });
+    removeHandlerTest.remove();
+
+    if (!removeHandlerExists) {
         $.event.special.remove = {
             remove: function(e) {
                 if (e.handler) {
-                    e.handler.call(this, new $.Event("remove", {target: this}));
+                    e.handler.call(this, new $.Event('remove', {target: this}));
                 }
             }
         };
