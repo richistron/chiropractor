@@ -1,6 +1,9 @@
 Chiropractor
 ============
 
+[![Build
+Status](https://travis-ci.org/WiserTogether/chiropractor.png?branch=master)](https://travis-ci.org/WiserTogether/chiropractor)
+
 Straighten out your Backbone.js
 
 Usage
