@@ -18,7 +18,7 @@ require.config({
         'json2':                'bower_components/require-handlebars-plugin/hbs/json2',
         'json3':                'bower_components/json3/lib/json3',
         'underscore':           'bower_components/underscore/underscore',
-        'backbone':             'bower_components/backbone/backbone',
+        'backbone':             'bower_components/backbone-amd/backbone',
         'jquery':               'bower_components/jquery/jquery',
         'jquery.cookie':        'bower_components/jquery.cookie/jquery.cookie',
         'backbone.subroute':    'bower_components/backbone.subroute/backbone.subroute',

@@ -2,7 +2,7 @@
   "name": "chiropractor",
   "version": "0.1.0",
   "dependencies": {
-    "backbone": "~1.0.0",
+    "backbone-amd": "~1.0.0",
     "backbone.subroute": "~0.4.0",
     "backbone-validation": "~0.8.0",
     "jquery": "~1.7.2",
