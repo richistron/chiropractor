@@ -5,7 +5,9 @@ define(function(require) {
     var Backbone = require('backbone'),
         _ = require('underscore'),
         auth = require('./models/auth'),
+        Validation = require('backbone.validation'),
         Base;
+
 
     Base = Backbone.Model.extend({
         sync: function(method, model, options) {
@@ -67,6 +69,8 @@ define(function(require) {
             return Backbone.Model.prototype.set.apply(this, arguments);
         }
     });
+
+    _.extend(Base.prototype, Validation.mixin);
 
     return {
         Base: Base,

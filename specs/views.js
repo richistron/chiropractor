@@ -147,35 +147,36 @@ define(function(require) {
                });
 
             it('should clear form errors when the fields change', function() {
-                   var model = new Chiropractor.Model();
+                   var model = new (Chiropractor.Model.extend({
+                       validation: {
+                            field1: {
+                                pattern: /^value$/,
+                                msg: 'Error 1'
+                            },
+                            field2: {
+                                pattern: /^value$/,
+                                msg: 'Error 2'
+                            }
+                        }
+                   }))({field1: 'value', field2: 'value'});
 
                    this.view = new (Views.Form.extend({
                        template: '{{ formfield "text" model "field1" }}' +
                            '{{ formfield "text" model "field2" }}'
                    }))({model: model}).render();
 
-                   model.parse({
-                       data: {},
-                       meta: {
-                           status: 400,
-                           errors: {
-                               form: {
-                                   '__all__': ['Error 1'],
-                                   'field1': ['Error 2'],
-                                   'field2': ['Error 3']
-                               }
-                           }
-                       }
-                   });
+                   model.validate();
 
-                   expect(this.view.$el.html()).to.contain('Error 1');
-                   expect(this.view.$el.html()).to.contain('Error 2');
-                   expect(this.view.$el.html()).to.contain('Error 3');
+                   expect(this.view.$el.html()).to.not.contain('Error 1');
+                   expect(this.view.$el.html()).to.not.contain('Error 2');
 
-                   model.set('field2', 'newval');
-                   expect(this.view.$el.html()).to.contain('Error 1');
+                   this.view.$('input[name="field2"]').val('badvalue').change();
+                   expect(this.view.$el.html()).to.not.contain('Error 1');
                    expect(this.view.$el.html()).to.contain('Error 2');
-                   expect(this.view.$el.html()).to.not.contain('Error 3');
+
+                   this.view.$('input[name="field2"]').val('value').change();
+                   expect(this.view.$el.html()).to.not.contain('Error 1');
+                   expect(this.view.$el.html()).to.not.contain('Error 2');
                });
         });
     };

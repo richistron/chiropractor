@@ -4,20 +4,23 @@ define(function(require) {
 
     var Backbone = require('backbone'),
         SubRoute = require('backbone.subroute'),
-        View = require('./views').Base,
-        Model = require('./models').Base,
-        Collection = require('./collections').Base,
-        Router = require('./routers').Base;
+        Views = require('./views'),
+        Models = require('./models'),
+        Collections = require('./collections'),
+        Routers = require('./routers');
 
     require('./hbs');
 
     return {
-        Collection: Collection,
+        Collection: Collections.Base,
+        Collections: Collections,
         Events: Backbone.Events,
         history: Backbone.history,
-        Model: Model,
-        Router: Router,
+        Model: Models.Base,
+        Models: Models,
+        Router: Routers.Base,
         SubRoute: SubRoute,
-        View: View
+        View: Views.Base,
+        Views: Views
     };
 });

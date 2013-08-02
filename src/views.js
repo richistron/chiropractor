@@ -118,6 +118,8 @@ define(function(require) {
         renderFormErrors: function(model, errors) {
             _(errors).each(function(errorMessages, field) {
                 var help;
+                errorMessages = typeof(errorMessages) === 'string' ?
+                    [errorMessages] : errorMessages;
 
                 if (field === '__all__') {
                     help = $('<div class="errors"></div>');

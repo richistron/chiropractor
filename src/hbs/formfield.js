@@ -26,11 +26,13 @@ define(function(require) {
         },
 
         inputChanged: function() {
-            this.model.set(
-                this.field,
-                this.$('[name=' + this.field + ']').val(),
-                {validate: true}
-            );
+            var val = this.$('[name=' + this.field + ']').val();
+            this.model.set(this.field, val, {validate: true});
+            // We want to ensure that the model value is really updated even
+            // if validation fails in the previous step. However, it should be
+            // silent and not trigger any change events since the previous step
+            // will take care of that in the case of success.
+            this.model.set(this.field, val, {silent: true});
         },
 
         render: function() {
