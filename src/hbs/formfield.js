@@ -2,12 +2,15 @@
 define(function(require) {
     'use strict';
 
-    var _ = require('underscore'),
+    var $ = require('jquery'),
+        _ = require('underscore'),
         Backbone = require('backbone'),
         Handlebars = require('handlebars'),
         viewHelper = require('./view'),
         fieldTemplates = {},
-        View, unregister, register;
+        Select2View, View, unregister, register;
+
+    require('select2');
 
     View = Backbone.View.extend({
         events: {
@@ -46,6 +49,14 @@ define(function(require) {
         }
     });
 
+    Select2View = View.extend({
+        render: function() {
+            View.prototype.render.apply(this, arguments);
+            this.$('select').select2();
+            return this;
+        }
+    });
+
     register = function(type, template, ViewClass) {
         ViewClass = ViewClass || View;
         fieldTemplates[type] = {
@@ -65,6 +76,7 @@ define(function(require) {
     register('select', require('hbs!./templates/formfield/select'));
     register('checkbox', require('hbs!./templates/formfield/checkbox'));
     register('radio', require('hbs!./templates/formfield/radio'));
+    register('select2', require('hbs!./templates/formfield/select2'), Select2View);
 
     Handlebars.registerHelper('formfield', function(type, model, fieldName, options) {
         // template helper in the form of:

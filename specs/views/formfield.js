@@ -10,8 +10,7 @@ define(function(require) {
         describe = require('mocha').describe,
         it = require('mocha').it,
         Chiropractor = require('chiropractor'),
-        Handlebars = require('handlebars'),
-        formfield = require('chiropractor/hbs/formfield');
+        FormField = require('chiropractor/views/formfield');
 
     return function() {
         beforeEach(function() {
@@ -28,16 +27,14 @@ define(function(require) {
 
         describe('core', function() {
             beforeEach(function() {
-                formfield.register('foo', Handlebars.compile(
-                    '<input type="foo" ' +
-                        'name="{{ name }}" ' +
-                        'value="{{ value }}" ' +
-                        'id="{{ id }}" />'
-                    ));
+                FormField.register('foo', {
+                    template: '<input type="foo" name="{{ name }}" ' +
+                        'value="{{ value }}" id="{{ id }}" />'
+                });
             });
 
             afterEach(function() {
-                formfield.unregister('foo');
+                FormField.unregister('foo');
             });
 
             it('should take three required arguments and render the ' +
@@ -193,6 +190,31 @@ define(function(require) {
                    this.view.$('select').val('1').change();
                    expect(spy.callCount).to.equal(1);
                    expect(this.model.get('field1')).to.equal('1');
+            });
+        });
+
+        describe('select2', function() {
+            it('should accept options and provide a searchable select2 ' +
+               'field', function() {
+                var View = Chiropractor.View.extend({
+                    template: '{{ formfield "select2" model "field1" options=data }}'
+                }),
+                spy = this.sandbox.spy();
+
+                this.view = new View({
+                    model: this.model,
+                    context: {data: [{id: 1, text: 'One'}, {id: 2, text: 'Two'}]}
+                });
+                this.view.listenTo(this.model, 'change:field1', spy);
+
+                this.dom.html(this.view.render().el);
+
+                expect(spy.callCount).to.equal(0);
+                expect(this.model.get('field1')).to.be.a('undefined');
+                this.view.$('[name="field1"]').select2('val', '1', true);
+                expect(this.view.$('[name="field1"]').val()).to.equal('1');
+                expect(spy.callCount).to.equal(1);
+                expect(this.model.get('field1')).to.equal('1');
             });
         });
     };

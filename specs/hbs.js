@@ -9,10 +9,6 @@ define(function(require) {
             require('specs/hbs/view')();
         });
 
-        describe('formfield', function() {
-            require('specs/hbs/formfield')();
-        });
-
         describe('ifequal', function() {
             require('specs/hbs/ifequal')();
         });

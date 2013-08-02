@@ -58,6 +58,43 @@ define(function(require) {
                 expect(this.view.render().$el.html())
                         .to.equal('Test <div>hello</div>');
             });
+
+            it('should be placed in the proper location in the parent ' +
+               'tempalte', function() {
+                var VarView = Chiropractor.View.extend({
+                        context: {hello: 'hello!'}
+                    }),
+                    View = Chiropractor.View.extend({
+                        template: '<div>Parent' +
+                               '{{#view VarView}}{{ hello }}{{/view}}' +
+                               'Parent</div>',
+                        context: {
+                            VarView: VarView
+                        }
+                    });
+
+                this.view = new View();
+                expect(this.view.render().$el.html())
+                        .to.equal('<div>Parent<div>hello!</div>Parent</div>');
+            });
+
+            it('should allow providing a template as a block', function() {
+                var VarView = Chiropractor.View.extend({
+                        context: {hello: 'hello!'}
+                    }),
+                    View = Chiropractor.View.extend({
+                        template: 'Test ' +
+                               '{{#view VarView}}{{ hello }}{{ there }}{{/view}}',
+                        context: {
+                            there: 'there!',
+                            VarView: VarView
+                        }
+                    });
+
+                this.view = new View();
+                expect(this.view.render().$el.html())
+                        .to.equal('Test <div>hello!</div>');
+            });
         });
 
         describe('provided context', function() {

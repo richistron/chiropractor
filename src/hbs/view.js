@@ -30,6 +30,13 @@ define(function(require) {
         else {
             View = arguments[0];
         }
+
+        if(options.fn) {
+            View = View.extend({
+                template: options.fn
+            });
+        }
+
         view = new View(attrs).render();
 
         placeholder = this.declaringView._addChild(view);
