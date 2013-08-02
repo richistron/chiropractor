@@ -47,6 +47,7 @@ require.config({
             exports: 'jQuery.cookie'
         }
     },
+
     enforceDefine: true
 });
 

@@ -2715,45 +2715,6 @@ define('chiropractor/hbs/view',['require','underscore','backbone','handlebars'],
     return view;
 });
 
-;
-;
-/**
- * @license handlebars hbs 0.4.0 - Alex Sexton, but Handlebars has it's own licensing junk
- *
- * Available via the MIT or new BSD license.
- * see: http://github.com/jrburke/require-cs for details on the plugin this was based off of
- */
-
-/* Yes, deliciously evil. */
-/*jslint evil: true, strict: false, plusplus: false, regexp: false */
-/*global require: false, XMLHttpRequest: false, ActiveXObject: false,
-define: false, process: false, window: false */
-define('hbs',[
-], function (
-) {
-
-      return {
-
-        get: function () {
-            return Handlebars;
-        },
-
-        write: function (pluginName, name, write) {
-
-            if ( (name + customNameExtension ) in buildMap) {
-                var text = buildMap[name + customNameExtension];
-                write.asModule(pluginName + "!" + name, text);
-            }
-        },
-
-        version: '0.4.0',
-
-        load: function (name, parentRequire, load, config) {
-                  }
-      };
-});
-/* END_hbs_PLUGIN */
-;
 /* START_TEMPLATE */
 define('hbs!chiropractor/hbs/templates/formfield/text',['hbs','handlebars'], function( hbs, Handlebars ){ 
 var t = Handlebars.template(function (Handlebars,depth0,helpers,partials,data) {
