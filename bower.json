@@ -24,6 +24,7 @@
     "karma.conf.js",
     "lib",
     "node_modules",
+    "src",
     "specs"
   ]
 }
