@@ -20,7 +20,7 @@ module.exports = function(grunt) {
                     name: 'chiropractor',
                     mainConfigFile: 'build.js',
                     optimize: "none",
-                    exclude: ['jquery', 'underscore', 'json3', 'handlebars', 'jquery.cookie', 'hbs'],
+                    exclude: ['jquery', 'underscore', 'json3', 'handlebars', 'jquery.cookie', 'hbs', 'select2'],
                     done: function(done, output) {
                         var duplicates = require('rjs-build-analysis').duplicates(output);
 
