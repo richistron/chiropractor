@@ -87,3 +87,4 @@ Or if you want more control over how your tests are run (such as continuous
 testing with auto-running tests on file changes you can run:
 
 	./node_modules/.bin/karma start --dev --browsers Chrome,PhantonJS
+
