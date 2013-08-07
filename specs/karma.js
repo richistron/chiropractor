@@ -15,6 +15,8 @@ require.config({
         'handlebars':           'bower_components/require-handlebars-plugin/Handlebars',
         'hbs':                  'bower_components/require-handlebars-plugin/hbs',
         'i18nprecompile':       'bower_components/require-handlebars-plugin/hbs/i18nprecompile',
+        'text':                 'bower_components/requirejs-plugins/lib/text',
+        'json':                 'bower_components/requirejs-plugins/src/json',
         'json2':                'bower_components/require-handlebars-plugin/hbs/json2',
         'json3':                'bower_components/json3/lib/json3',
         'underscore':           'bower_components/underscore/underscore',

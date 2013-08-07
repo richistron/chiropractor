@@ -39,11 +39,9 @@ define(function(require) {
         }
     });
 
-    View.register = function(type, def) {
-        var SubClass = fieldTemplates[type] = View.extend(def);
-        SubClass.register = function(type, def) {
-            return fieldTemplates[type] = this.__super__.extend.call(this, def);
-        };
+    View.register = register = function(type, def) {
+        var SubClass = fieldTemplates[type] = this.extend(def);
+        SubClass.register = register;
         return SubClass;
     };
 
@@ -52,7 +50,6 @@ define(function(require) {
             delete fieldTemplates[type];
         }
     };
-
 
     View.register('text', {
         template: require('hbs!./templates/formfield/text')
@@ -125,6 +122,9 @@ define(function(require) {
                         });
                     }
                 });
+            }
+            else {
+                throw new Error('Invalid formfield options for select2');
             }
         },
 
