@@ -20,7 +20,6 @@ require.config({
         'backbone':             'bower_components/backbone-amd/backbone',
         'jquery':               'bower_components/jquery/jquery',
         'jquery.cookie':        'bower_components/jquery.cookie/jquery.cookie',
-        'select2':              'bower_components/select2/select2',
         'backbone.subroute':    'bower_components/backbone.subroute/backbone.subroute',
         'backbone.validation':  'bower_components/backbone-validation/dist/backbone-validation-amd'
     },
@@ -35,10 +34,6 @@ require.config({
     },
 
     shim: {
-        'select2': {
-            deps: ['jquery'],
-            exports: 'jQuery.fn.select2'
-        },
         'backbone': {
             deps: ['jquery', 'underscore'],
             exports: 'Backbone'
