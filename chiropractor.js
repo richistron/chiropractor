@@ -2139,46 +2139,8 @@ return t;
 });
 /* END_TEMPLATE */
 ;
-/* START_TEMPLATE */
-define('hbs!chiropractor/views/templates/formfield/select2',['hbs','handlebars'], function( hbs, Handlebars ){ 
-var t = Handlebars.template(function (Handlebars,depth0,helpers,partials,data) {
-  helpers = helpers || Handlebars.helpers;
-  var buffer = "", stack1, foundHelper, functionType="function", escapeExpression=this.escapeExpression;
-
-
-  buffer += "<div class=\"control-group\" id=\"container-";
-  foundHelper = helpers.id;
-  if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
-  else { stack1 = depth0.id; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "\">\n    <label class=\"control-label\" for=\"";
-  foundHelper = helpers.id;
-  if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
-  else { stack1 = depth0.id; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "\">";
-  foundHelper = helpers.label;
-  if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
-  else { stack1 = depth0.label; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "</label>\n    <div class=\"controls\">\n        <input type=\"hidden\" id=\"";
-  foundHelper = helpers.id;
-  if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
-  else { stack1 = depth0.id; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "\" name=\"";
-  foundHelper = helpers.name;
-  if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
-  else { stack1 = depth0.name; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "\" value=\"\">\n        <span class=\"help-inline\">";
-  foundHelper = helpers.help;
-  if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
-  else { stack1 = depth0.help; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "</span>\n    </div>\n</div>\n";
-  return buffer;});
-Handlebars.registerPartial('chiropractor_views_templates_formfield_select2', t);
-return t;
-});
-/* END_TEMPLATE */
-;
 /*global define*/
-define('chiropractor/views/formfield',['require','jquery','underscore','handlebars','../hbs/view','./base','select2','hbs!./templates/formfield/text','hbs!./templates/formfield/textarea','hbs!./templates/formfield/select','hbs!./templates/formfield/checkbox','hbs!./templates/formfield/radio','hbs!./templates/formfield/select2'],function(require) {
+define('chiropractor/views/formfield',['require','jquery','underscore','handlebars','../hbs/view','./base','hbs!./templates/formfield/text','hbs!./templates/formfield/textarea','hbs!./templates/formfield/select','hbs!./templates/formfield/checkbox','hbs!./templates/formfield/radio'],function(require) {
     
 
     var $ = require('jquery'),
@@ -2188,8 +2150,6 @@ define('chiropractor/views/formfield',['require','jquery','underscore','handleba
         Base = require('./base'),
         fieldTemplates = {},
         View, register;
-
-    require('select2');
 
     View = Base.extend({
         events: {
@@ -2248,71 +2208,6 @@ define('chiropractor/views/formfield',['require','jquery','underscore','handleba
 
     View.register('radio', {
         template: require('hbs!./templates/formfield/radio')
-    });
-
-    View.register('select2', {
-        template: require('hbs!./templates/formfield/select2'),
-        initialize: function(options) {
-            View.prototype.initialize.call(this, options);
-            this.select2 = {
-                width: this.config.width || 'resolve',
-                allowClear: this.config.blank,
-                dropdownAutoWidth: true
-            };
-
-            if (!_(this.config.options).isEmpty()) {
-                this.select2.data = this.config.options;
-            }
-            else if (this.config.url && this.config.optName, this.config.optValue) {
-                var url = this.config.url,
-                    optRoot = this.config.optRoot,
-                    optName = this.config.optName,
-                    optValue = this.config.optValue,
-                    getNestedAttr = function(obj, attrs) {
-                        if (!_(attrs).isEmpty()) {
-                            _(attrs.split('.')).each(function(attr) {
-                                if (obj && obj[attr]) {
-                                    obj = obj[attr];
-                                }
-                                else {
-                                    return undefined;
-                                }
-                            });
-                        }
-                        return obj;
-                    };
-
-                _(this.select2).defaults({
-                    minimumInputLength: 1,
-                    query: function(query) {
-                        require([url + query.term], function(data) {
-                            var results = getNestedAttr(data, optRoot);
-                            results = _(results).map(function(record) {
-                                return {
-                                    id: getNestedAttr(record, optName),
-                                    text: getNestedAttr(record, optValue)
-                                };
-                            }, this);
-
-                            query.callback({
-                                results: results,
-                                more: false
-                            });
-                        });
-                    }
-                });
-            }
-            else {
-                throw new Error('Invalid formfield options for select2');
-            }
-        },
-
-        render: function() {
-            View.prototype.render.apply(this, arguments);
-            this.$('[name=' + this.field + ']').select2(this.select2);
-
-            return this;
-        }
     });
 
     Handlebars.registerHelper('formfield', function(type, model, fieldName) {
