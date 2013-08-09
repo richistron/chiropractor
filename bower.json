@@ -1,14 +1,16 @@
 {
   "name": "chiropractor",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "dependencies": {
-    "backbone": "~1.0.0",
-    "backbone.subroute": "~0.4.0",
     "jquery": "~1.7.2",
     "jquery.cookie": "~1.3.1",
-    "json3": "~3.2.5",
     "require-handlebars-plugin": "~0.4.0",
-    "underscore": "~1.5.1"
+    "requirejs-plugins": "~1.0.2",
+    "underscore": "~1.5.1",
+    "backbone-amd": "~1.0.0",
+    "backbone.subroute": "~0.4.0",
+    "json3": "~3.2.5",
+    "backbone-validation": "~0.8.0"
   },
   "devDependencies": {
     "chai": "~1.7.2",
@@ -23,7 +25,7 @@
     "karma.conf.js",
     "lib",
     "node_modules",
-    "specs",
-    "src"
+    "src",
+    "specs"
   ]
 }

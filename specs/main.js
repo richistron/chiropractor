@@ -14,9 +14,7 @@ define(function(require) {
         });
 
         describe('hbs', function() {
-            describe('view', function() {
-                require('specs/hbs/view')();
-            });
+            require('specs/hbs')();
         });
     };
 });

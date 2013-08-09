@@ -22,7 +22,9 @@ module.exports = function(karma) {
             {pattern: 'lib/**/*.js', included: false},
             {pattern: 'node_modules/mocha/mocha.css', included: false},
             {pattern: 'specs/**/*.js', included: false},
-            {pattern: 'src/**/*.js', included: false}
+            {pattern: 'specs/**/*.json', included: false},
+            {pattern: 'src/**/*.js', included: false},
+            {pattern: 'src/**/*.hbs', included: false}
         ],
 
 
