@@ -1846,7 +1846,7 @@ define('chiropractor/hbs/view',['require','underscore','backbone','handlebars'],
             View = arguments[0];
         }
 
-        if(options.fn) {
+        if (options.fn) {
             View = View.extend({
                 template: options.fn
             });
@@ -1858,7 +1858,15 @@ define('chiropractor/hbs/view',['require','underscore','backbone','handlebars'],
 
         // Return a placeholder that the Chiropractor.View can replace with
         // the child view appended above.
-        return new Handlebars.SafeString(placeholder);
+        // If this is called as a block hbs helper, then we do not need to
+        // use safe string, while as a hbs statement it needs to be declared
+        // safe.
+        if (options.fn) {
+            return placeholder;
+        }
+        else {
+            return new Handlebars.SafeString(placeholder);
+        }
     };
 
     Handlebars.registerHelper('view', view);
@@ -2236,7 +2244,7 @@ define('chiropractor/views/formfield',['require','jquery','underscore','handleba
             field: fieldName,
             model: model,
             context: opts
-        });
+        }, options);
     });
 
     return View;
@@ -3117,6 +3125,71 @@ define('chiropractor/routers',['require','backbone'],function(require) {
 });
 
 /*global define*/
+(function(window) {
+    
+
+    define('chiropractor/browser',['require'],function(require) {
+        var ieVersion = function() {
+            var rv = -1; // Return value assumes failure.
+            if (window.navigator.appName == 'Microsoft Internet Explorer') {
+                var ua = window.navigator.userAgent;
+                var re = new RegExp("MSIE ([0-9]{1,}[\.0-9]{0,})");
+                if (re.exec(ua) != null)
+                    rv = parseFloat(RegExp.$1);
+            }
+            return rv;
+        }();
+        return {
+            isOldIE: ieVersion !== -1 && ieVersion < 9,
+            window: window,
+            navigator: window.navigator,
+            document: window.document
+        };
+    });
+}(this));
+
+/*global define*/
+define('chiropractor/debug',['require','exports','module','chiropractor/browser'],function(require, exports, module) {
+    var window = require('chiropractor/browser').window,
+        console = window.console;
+
+    if (require.specified('console')) {
+        require(['console'], function(mod) {
+            console = mod;
+        });
+    }
+
+    function isInspectorOpen() {
+        if (console.firebug) {
+            return true;
+        }
+        else if (console.profile) {
+            console.profile();
+            console.profileEnd();
+            if (console.clear) {
+                console.clear();
+            }
+
+            if (console.profiles && console.profiles.length > 0) {
+                return true;
+            }
+        }
+
+        if ((window.outerHeight - window.innerHeight) > 100) {
+            return true;
+        }
+
+        return false;
+    }
+
+    if (module.config().enabled) {
+        window.onerror = function(message, url, linenumber) {
+            alert("JavaScript error: " + message + " on line " + linenumber + " for " + url);
+        }
+    }
+});
+
+/*global define*/
 define('chiropractor/hbs/ifequal',['require','handlebars'],function(require) {
     
 
@@ -3140,7 +3213,7 @@ define('chiropractor/hbs',['require','./hbs/view','./hbs/ifequal'],function(requ
 });
 
 /*global define*/
-define('chiropractor/main',['require','backbone','backbone.subroute','./views','./models','./collections','./routers','./hbs'],function(require) {
+define('chiropractor/main',['require','backbone','backbone.subroute','./views','./models','./collections','./routers','./debug','./hbs'],function(require) {
     
 
     var Backbone = require('backbone'),
@@ -3150,6 +3223,7 @@ define('chiropractor/main',['require','backbone','backbone.subroute','./views','
         Collections = require('./collections'),
         Routers = require('./routers');
 
+    require('./debug');
     require('./hbs');
 
     return {

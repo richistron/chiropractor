@@ -79,13 +79,22 @@ module.exports = function(grunt) {
                 updateConfigs: [],
                 commit: true,
                 commitMessage: 'Release v%VERSION%',
-                commitFiles: ['package.json', 'bower.json'], // '-a' for all files
+                // '-a' for all files
+                commitFiles: [
+                    // Hack to ensure that our bump commit works.
+                    '--no-verify',
+                    // Actual files to change.
+                    'package.json', 'bower.json',
+                    'chiropractor.js', 'chiropractor.min.js', 'chiropractor.min.map',
+                    'chiropractor.nodeps.js', 'chiropractor.nodeps.min.js', 'chiropractor.nodeps.min.map'
+                ],
                 createTag: true,
                 tagName: 'v%VERSION%',
                 tagMessage: 'Version %VERSION%',
                 push: true,
                 pushTo: 'origin',
-                gitDescribeOptions: '--tags --always --abbrev=1 --dirty=-d' // options to use with '$ git describe'
+                // options to use with '$ git describe'
+                gitDescribeOptions: '--tags --always --abbrev=1 --dirty=-d'
             }
         }
     });
@@ -96,4 +105,6 @@ module.exports = function(grunt) {
 
     // Default task(s).
     grunt.registerTask('default', ['requirejs', 'uglify']);
+    grunt.renameTask('bump', 'nonBuildBump');
+    grunt.registerTask('bump', ['requirejs', 'uglify', 'nonBuildBump']);
 };
