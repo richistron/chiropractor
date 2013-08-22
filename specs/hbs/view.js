@@ -107,6 +107,24 @@ define(function(require) {
                });
         });
 
+        describe('nesting', function() {
+            it('should pass the provided context to the view', function() {
+                var NestedView = Chiropractor.View.extend({
+                    template: '{{ text }}'
+                });
+                var View = Chiropractor.View.extend({
+                    context: {
+                        View: NestedView,
+                        data: [{text: 'a'}, {text: 'b'}, {text: 'c'}]
+                    },
+                    template: '{{#each data}}{{ view ../View null .. context=this }}{{/each}}'
+                });
+                this.view = new View();
+                expect(this.view.render().$el.html())
+                    .to.equal('<div>a</div><div>b</div><div>c</div>');
+            });
+        });
+
         describe('provided context', function() {
             it('should pass the provided context to the view', function() {
                 var View = Chiropractor.View.extend({
