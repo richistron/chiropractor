@@ -157,12 +157,19 @@ define('chiropractor/hbs/view',['require','underscore','backbone','handlebars'],
     view = function() {
         // template helper in the form of:
         //
-        //      {{ view "path/to/require/module[|ViewName]" [context] }}
+        //      {{ view "path/to/require/module[|ViewName]" [viewOptions] [context] [viewOption1=val viewOption2=val]}}
         var View, view, options, requirePath,
-            viewName, attrs, requireBits, placeholder;
+            viewName, attrs, requireBits, placeholder,
+            context = {};
 
         options = arguments[arguments.length - 1];
         attrs = arguments[1] || {};
+        _.defaults(attrs, options.hash || {});
+
+        if (arguments.length === 4) {
+            context = arguments[2];
+        }
+        _.defaults(this, context);
 
         if (typeof(arguments[0]) === 'string') {
             requireBits = arguments[0].split('|');
