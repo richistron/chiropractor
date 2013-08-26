@@ -2405,7 +2405,7 @@ define('chiropractor/models/auth',['require','backbone','jquery','underscore','j
     };
 });
 
-// Backbone.Validation v0.8.0
+// Backbone.Validation v0.8.1
 //
 // Copyright (c) 2011-2013 Thomas Pedersen
 // Distributed under MIT License
@@ -2479,6 +2479,7 @@ define('chiropractor/models/auth',['require','backbone','jquery','underscore','j
       _.each(obj, function(val, key) {
         if(obj.hasOwnProperty(key)) {
           if (val && typeof val === 'object' && !(
+            val instanceof Array ||
             val instanceof Date ||
             val instanceof RegExp ||
             val instanceof Backbone.Model ||
@@ -2576,7 +2577,7 @@ define('chiropractor/models/auth',['require','backbone','jquery','underscore','j
             isValid = true,
             computed = _.clone(attrs),
             flattened = flatten(attrs);
-
+  
         _.each(flattened, function(val, attr) {
           error = validateAttr(model, attr, val, computed);
           if (error) {
@@ -2633,7 +2634,7 @@ define('chiropractor/models/auth',['require','backbone','jquery','underscore','j
                 changedAttrs = flatten(attrs || allAttrs),
   
                 result = validateModel(model, allAttrs);
-
+  
             model._isValid = result.isValid;
   
             // After validation is performed, loop through all changed attributes
@@ -2702,7 +2703,7 @@ define('chiropractor/models/auth',['require','backbone','jquery','underscore','j
       return {
   
         // Current version of the library
-        version: '0.8.0',
+        version: '0.8.1',
   
         // Called to configure the default options
         configure: function(options) {
@@ -2844,7 +2845,7 @@ define('chiropractor/models/auth',['require','backbone','jquery','underscore','j
       sentenceCase: function(attrName) {
         return attrName.replace(/(?:^\w|[A-Z]|\b\w)/g, function(match, index) {
           return index === 0 ? match.toUpperCase() : ' ' + match.toLowerCase();
-        }).replace('_', ' ');
+        }).replace(/_/g, ' ');
       },
   
       // Looks for a label configured on the model and returns it
@@ -2887,9 +2888,9 @@ define('chiropractor/models/auth',['require','backbone','jquery','underscore','j
         return _.isNumber(value) || (_.isString(value) && value.match(defaultPatterns.number));
       };
   
-      // Determines whether or not not a value is empty
+      // Determines whether or not a value is empty
       var hasValue = function(value) {
-        return !(_.isNull(value) || _.isUndefined(value) || (_.isString(value) && trim(value) === ''));
+        return !(_.isNull(value) || _.isUndefined(value) || (_.isString(value) && trim(value) === '') || (_.isArray(value) && _.isEmpty(value)));
       };
   
       return {
@@ -3017,10 +3018,8 @@ define('chiropractor/models/auth',['require','backbone','jquery','underscore','j
   
     return Validation;
   }(_));
-  
   return Backbone.Validation;
 }));
-
 /*global define,setTimeout,clearTimeout*/
 define('chiropractor/models',['require','backbone','underscore','./models/auth','backbone.validation'],function(require) {
     
