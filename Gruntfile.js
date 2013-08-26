@@ -96,15 +96,41 @@ module.exports = function(grunt) {
                 // options to use with '$ git describe'
                 gitDescribeOptions: '--tags --always --abbrev=1 --dirty=-d'
             }
+        },
+        jshint: {
+            all:['src/**/*.js'],
+            options: {
+                bitwise: true,
+                browser: true,
+                browser: true,
+                curly: true,
+                eqeqeq: true,
+                immed: true,
+                jquery: true,
+                latedef: true,
+                newcap: true,
+                noarg: true,
+                node: true,
+                nonew: true,
+                plusplus: true,
+                regexp: true,
+                trailing: true,
+                undef: true,
+                globals: {
+                    define: true,
+                    require: true
+                }
+            }
         }
     });
 
     grunt.loadNpmTasks('grunt-contrib-uglify');
     grunt.loadNpmTasks('grunt-contrib-requirejs');
+    grunt.loadNpmTasks('grunt-contrib-jshint');
     grunt.loadNpmTasks('grunt-bump');
 
     // Default task(s).
-    grunt.registerTask('default', ['requirejs', 'uglify']);
+    grunt.registerTask('default', ['jshint', 'requirejs', 'uglify']);
     grunt.renameTask('bump', 'nonBuildBump');
-    grunt.registerTask('bump', ['requirejs', 'uglify', 'nonBuildBump']);
+    grunt.registerTask('bump', ['default', 'nonBuildBump']);
 };
