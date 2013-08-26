@@ -155,7 +155,7 @@ define(function(require) {
             checkEventCleanup.call(this);
         });
 
-        describe.only('setup', function() {
+        describe('setup', function() {
             describe('events', function() {
                 beforeEach(function() {
                     this.check = _(function() {
