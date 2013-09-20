@@ -132,5 +132,5 @@ module.exports = function(grunt) {
     // Default task(s).
     grunt.registerTask('default', ['jshint', 'requirejs', 'uglify']);
     grunt.renameTask('bump', 'nonBuildBump');
-    grunt.registerTask('bump', ['default', 'nonBuildBump']);
+    grunt.registerTask('bump', ['nonBuildBump::bump-only', 'default', 'nonBuildBump::commit-only']);
 };
