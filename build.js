@@ -21,7 +21,8 @@ require.config({
         'jquery':               'bower_components/jquery/jquery',
         'jquery.cookie':        'bower_components/jquery.cookie/jquery.cookie',
         'backbone.subroute':    'bower_components/backbone.subroute/backbone.subroute',
-        'backbone.validation':  'bower_components/backbone-validation/dist/backbone-validation-amd'
+        'backbone.validation':  'bower_components/backbone-validation/dist/backbone-validation-amd',
+        'backbone.deep.model': 'bower_components/backbone-deep-model/distribution/deep-model'
     },
 
     skipModuleInsertion: false,
