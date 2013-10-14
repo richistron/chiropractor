@@ -245,7 +245,7 @@ define(function(require) {
                 it('should raise an exception if all Backbone.View events ' +
                    'are not unregistered', function() {
                        this.view = new Chiropractor.View();
-                       this.view.$el.off('remove', this.view.remove);
+                       this.view.$el.off('destroyed', this.view.remove);
 
                        this.view.on('change', this.noop);
 

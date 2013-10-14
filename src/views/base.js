@@ -10,14 +10,14 @@ define(function(require) {
         removeHandlerExists = false,
         placeholderId;
 
-    removeHandlerTest.on('remove', function() { removeHandlerExists = true; });
+    removeHandlerTest.on('destroyed', function() { removeHandlerExists = true; });
     removeHandlerTest.remove();
 
     if (!removeHandlerExists) {
-        $.event.special.remove = {
+        $.event.special.destroyed = {
             remove: function(e) {
                 if (e.handler) {
-                    e.handler.call(this, new $.Event('remove', {target: this}));
+                    e.handler.call(this, new $.Event('destroyed', {target: this}));
                 }
             }
         };
@@ -37,7 +37,7 @@ define(function(require) {
             this._childViews = [];
             this._context = options.context || {};
 
-            this.$el.on('remove', this.remove);
+            this.$el.on('destroyed', this.remove);
         },
 
         _addChild: function(view) {
@@ -73,7 +73,7 @@ define(function(require) {
         },
 
         remove: function() {
-            this.$el.off('remove', this.remove);
+            this.$el.off('destroyed', this.remove);
             _(this._childViews).each(function(view) {
                 view.remove();
             });
