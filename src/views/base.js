@@ -10,14 +10,22 @@ define(function(require) {
         removeHandlerExists = false,
         placeholderId;
 
-    removeHandlerTest.on('destroyed', function() { removeHandlerExists = true; });
+    removeHandlerTest.on('remove', function() { removeHandlerExists = true; });
     removeHandlerTest.remove();
 
     if (!removeHandlerExists) {
-        $.event.special.destroyed = {
+        $.event.special.remove = {
             remove: function(e) {
                 if (e.handler) {
-                    e.handler.call(this, new $.Event('destroyed', {target: this}));
+                    var $el = $(this);
+                    // Since this event gets fired on calling $el.off('remove')
+                    // as well as when the $el.remove() gets called, we need to
+                    // allow the Backbone View to unregister this without
+                    // firing it.
+                    if(!$el.hasClass('removedEventFired')) {
+                        $el.addClass('removedEventFired');
+                        e.handler.call(this, new $.Event('remove', {target: this}));
+                    }
                 }
             }
         };
@@ -37,7 +45,7 @@ define(function(require) {
             this._childViews = [];
             this._context = options.context || {};
 
-            this.$el.on('destroyed', this.remove);
+            this.$el.on('remove', this.remove);
         },
 
         _addChild: function(view) {
@@ -73,7 +81,8 @@ define(function(require) {
         },
 
         remove: function() {
-            this.$el.off('destroyed', this.remove);
+            this.$el.addClass('removedEventFired');
+            this.$el.off('remove', this.remove);
             _(this._childViews).each(function(view) {
                 view.remove();
             });
