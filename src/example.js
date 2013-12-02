@@ -15,7 +15,6 @@ define(function(require) {
         example3 = require('example/example3'),
         example4 = require('example/example4');
 
-
     require('src/hbs');
 
     var page = document.getElementById('page-layout');

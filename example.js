@@ -31,8 +31,7 @@
             'backbone.validation': 'bower_components/backbone-validation/dist/backbone-validation-amd',
             'backbone.deep.model': 'bower_components/backbone-deep-model/src/deep-model',
             'underscore.mixin.deepextend': '/lib/underscore.mixin.deepExtend',
-            'chiropractor': 'src/main',
-            'chiropractor-compiled': './chiropractor'
+            'chiropractor': 'src/main'
         },
 
         skipModuleInsertion: false,
