@@ -23,7 +23,7 @@ require.config({
         'backbone.subroute':            'bower_components/backbone.subroute/backbone.subroute',
         'backbone.validation':          'bower_components/backbone-validation/dist/backbone-validation-amd',
         'backbone.deep.model':          'bower_components/backbone-deep-model/src/deep-model',
-        'underscore.mixin.deepextend':  'bower_components/backbone-deep-model/lib/underscore.mixin.deepExtend'
+        'underscore.mixin.deepextend': './lib/underscore.mixin.deepextend',
     },
 
     skipModuleInsertion: false,
@@ -58,7 +58,8 @@ require.config({
 
     deps: [
         'jquery',
-        'hbs'
+        'hbs',
+        'underscore'
     ],
 
     enforceDefine: true

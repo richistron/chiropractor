@@ -1829,6 +1829,152 @@ define('chiropractor/views/form',['require','underscore','jquery','backbone','./
     });
 });
 
+/* START_TEMPLATE */
+define('hbs!chiropractor/views/templates/fields/label',['hbs','handlebars'], function( hbs, Handlebars ){ 
+var t = Handlebars.template(function (Handlebars,depth0,helpers,partials,data) {
+  helpers = helpers || Handlebars.helpers;
+  var stack1, foundHelper, functionType="function", escapeExpression=this.escapeExpression;
+
+
+  foundHelper = helpers.value;
+  if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
+  else { stack1 = depth0.value; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
+  return escapeExpression(stack1);});
+Handlebars.registerPartial('chiropractor_views_templates_fields_label', t);
+return t;
+});
+/* END_TEMPLATE */
+;
+/*global define*/
+define('chiropractor/views/field',['require','jquery','underscore','handlebars','hbs!./templates/fields/label'],function(require) {
+    
+
+    var $ = require('jquery'),
+        _ = require('underscore'),
+        Handlebars = require('handlebars'),
+        fieldTemplates = {},
+        label = require('hbs!./templates/fields/label');
+
+        fieldTemplates = {
+            'default': label
+        };
+
+       Handlebars.registerHelper('field', function(type, model, fieldName) {
+            // template helper in the form of:
+            //
+            //      {{ field 'text' model 'fieldname' [attrName="attrValue"]*}}
+            var template = fieldTemplates[type],
+                options = arguments[arguments.length - 1],
+                opts = options.hash || {},
+                field = opts.field,
+                id = '',
+                value = '';
+
+            if (!template) {
+               template = fieldTemplates['default'];
+            }
+
+            if (model) {
+                id = model.fieldId(fieldName);
+                //console.log(model);
+                value = model.get(field.id);
+            }
+
+            _.defaults(opts, {
+                id: id,
+                label: fieldName,
+                name: fieldName,
+                options: [],
+                blank: false,
+                value: value,
+                help: '',
+                model: model
+            });
+            return new Handlebars.SafeString(template(opts));
+        });
+
+    return {
+        Templates: fieldTemplates,
+        addTemplate: function(name,template) {
+            fieldTemplates[name] = template;
+        }
+    };
+});
+
+/* START_TEMPLATE */
+define('hbs!chiropractor/views/templates/row/row',['hbs','handlebars'], function( hbs, Handlebars ){ 
+var t = Handlebars.template(function (Handlebars,depth0,helpers,partials,data) {
+  helpers = helpers || Handlebars.helpers;
+  var buffer = "", stack1, foundHelper, helperMissing=helpers.helperMissing, escapeExpression=this.escapeExpression, functionType="function", self=this;
+
+function program1(depth0,data,depth1) {
+  
+  var buffer = "", stack1, stack2, stack3, foundHelper;
+  buffer += "\r\n    <td>";
+  stack1 = depth1.model;
+  stack2 = depth0.fieldtype;
+  stack3 = {};
+  stack3['field'] = depth0;
+  foundHelper = helpers.field;
+  stack1 = foundHelper ? foundHelper.call(depth0, stack2, stack1, {hash:stack3}) : helperMissing.call(depth0, "field", stack2, stack1, {hash:stack3});
+  buffer += escapeExpression(stack1) + "</td>\r\n  ";
+  return buffer;}
+
+  buffer += "<tr class=\"";
+  foundHelper = helpers.rowclass;
+  if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
+  else { stack1 = depth0.rowclass; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
+  buffer += escapeExpression(stack1) + "\">\r\n  ";
+  stack1 = depth0.options;
+  stack1 = stack1 == null || stack1 === false ? stack1 : stack1.fields;
+  stack1 = helpers.each.call(depth0, stack1, {hash:{},inverse:self.noop,fn:self.programWithDepth(program1, data, depth0)});
+  if(stack1 || stack1 === 0) { buffer += stack1; }
+  buffer += "\r\n</tr>";
+  return buffer;});
+Handlebars.registerPartial('chiropractor_views_templates_row_row', t);
+return t;
+});
+/* END_TEMPLATE */
+;
+/*global define*/
+define('chiropractor/views/row',['require','jquery','underscore','handlebars','hbs!./templates/row/row'],function(require) {
+    
+
+    var $ = require('jquery'),
+        _ = require('underscore'),
+        Handlebars = require('handlebars'),
+        rowTemplates = {},
+        row = require('hbs!./templates/row/row');
+
+        rowTemplates = {
+            'row': row
+        };
+
+       Handlebars.registerHelper('row', function(type, model, fieldName) {
+            // template helper in the form of:
+            //
+            //      {{ field 'text' model 'fieldname' [attrName="attrValue"]*}}
+            var current = rowTemplates[type],
+                options = arguments[arguments.length - 1],
+                opts = options.hash || {},
+                id = '',
+                value = '';
+
+            if (!current) {
+                throw new Error('Unregistered field template: ' + type);
+            }
+            //console.log(opt);
+            return new Handlebars.SafeString(current({ model: model, options: opts }));
+        });
+
+    return {
+        Templates: rowTemplates,
+        addTemplate: function(name,template) {
+            rowTemplates[name] = template;
+        }
+    };
+});
+
 /*global define*/
 define('chiropractor/hbs/view',['require','underscore','backbone','handlebars'],function(require) {
     
@@ -1908,7 +2054,7 @@ var t = Handlebars.template(function (Handlebars,depth0,helpers,partials,data) {
   foundHelper = helpers.id;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.id; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "\">\n    <label class=\"control-label ";
+  buffer += escapeExpression(stack1) + "\">\r\n    <label class=\"control-label ";
   foundHelper = helpers.labelclass;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.labelclass; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
@@ -1920,7 +2066,7 @@ var t = Handlebars.template(function (Handlebars,depth0,helpers,partials,data) {
   foundHelper = helpers.label;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.label; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "</label>\n    <div class=\"controls\">\n        <input type=\"text\" placeholder=\"";
+  buffer += escapeExpression(stack1) + "</label>\r\n    <div class=\"controls\">\r\n        <input type=\"text\" placeholder=\"";
   foundHelper = helpers.placeholder;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.placeholder; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
@@ -1940,15 +2086,15 @@ var t = Handlebars.template(function (Handlebars,depth0,helpers,partials,data) {
   foundHelper = helpers['class'];
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0['class']; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "\" />\n        <span class=\"description\">";
+  buffer += escapeExpression(stack1) + "\" />\r\n        <span class=\"description\">";
   foundHelper = helpers.description;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.description; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "</span>\n        <span class=\"help-inline\">";
+  buffer += escapeExpression(stack1) + "</span>\r\n        <span class=\"help-inline\">";
   foundHelper = helpers.help;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.help; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "</span>\n    </div>\n</div>\n";
+  buffer += escapeExpression(stack1) + "</span>\r\n    </div>\r\n</div>\r\n";
   return buffer;});
 Handlebars.registerPartial('chiropractor_views_templates_formfield_text', t);
 return t;
@@ -1966,7 +2112,7 @@ var t = Handlebars.template(function (Handlebars,depth0,helpers,partials,data) {
   foundHelper = helpers.id;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.id; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "\">\n    <label class=\"control-label\" for=\"";
+  buffer += escapeExpression(stack1) + "\">\r\n    <label class=\"control-label\" for=\"";
   foundHelper = helpers.id;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.id; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
@@ -1974,7 +2120,7 @@ var t = Handlebars.template(function (Handlebars,depth0,helpers,partials,data) {
   foundHelper = helpers.label;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.label; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "</label>\n    <div class=\"controls\">\n        <textarea id=\"";
+  buffer += escapeExpression(stack1) + "</label>\r\n    <div class=\"controls\">\r\n        <textarea id=\"";
   foundHelper = helpers.id;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.id; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
@@ -1986,11 +2132,11 @@ var t = Handlebars.template(function (Handlebars,depth0,helpers,partials,data) {
   foundHelper = helpers.value;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.value; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "</textarea>\n        <span class=\"help-inline\">";
+  buffer += escapeExpression(stack1) + "</textarea>\r\n        <span class=\"help-inline\">";
   foundHelper = helpers.help;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.help; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "</span>\n    </div>\n</div>\n";
+  buffer += escapeExpression(stack1) + "</span>\r\n    </div>\r\n</div>\r\n";
   return buffer;});
 Handlebars.registerPartial('chiropractor_views_templates_formfield_textarea', t);
 return t;
@@ -2006,17 +2152,17 @@ var t = Handlebars.template(function (Handlebars,depth0,helpers,partials,data) {
 function program1(depth0,data) {
   
   var buffer = "", stack1, foundHelper;
-  buffer += "\n                <option value=\"\">";
+  buffer += "\r\n                <option value=\"\">";
   foundHelper = helpers.blank;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.blank; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "</option>\n            ";
+  buffer += escapeExpression(stack1) + "</option>\r\n            ";
   return buffer;}
 
 function program3(depth0,data,depth1) {
   
   var buffer = "", stack1, stack2, foundHelper;
-  buffer += "\n                <option value=\"";
+  buffer += "\r\n                <option value=\"";
   foundHelper = helpers.value;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.value; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
@@ -2030,7 +2176,7 @@ function program3(depth0,data,depth1) {
   foundHelper = helpers.label;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.label; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "</option>\n            ";
+  buffer += escapeExpression(stack1) + "</option>\r\n            ";
   return buffer;}
 function program4(depth0,data) {
   
@@ -2041,7 +2187,7 @@ function program4(depth0,data) {
   foundHelper = helpers.id;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.id; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "\">\n    <label class=\"control-label ";
+  buffer += escapeExpression(stack1) + "\">\r\n    <label class=\"control-label ";
   foundHelper = helpers.labelclass;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.labelclass; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
@@ -2053,7 +2199,7 @@ function program4(depth0,data) {
   foundHelper = helpers.label;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.label; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "</label>\n    <div class=\"controls\">\n        <select id=\"";
+  buffer += escapeExpression(stack1) + "</label>\r\n    <div class=\"controls\">\r\n        <select id=\"";
   foundHelper = helpers.id;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.id; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
@@ -2061,23 +2207,23 @@ function program4(depth0,data) {
   foundHelper = helpers.name;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.name; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "\">\n            ";
+  buffer += escapeExpression(stack1) + "\">\r\n            ";
   stack1 = depth0.blank;
   stack1 = helpers['if'].call(depth0, stack1, {hash:{},inverse:self.noop,fn:self.program(1, program1, data)});
   if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "\n            ";
+  buffer += "\r\n            ";
   stack1 = depth0.options;
   stack1 = helpers.each.call(depth0, stack1, {hash:{},inverse:self.noop,fn:self.programWithDepth(program3, data, depth0)});
   if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "\n        </select>\n        <span class=\"description\">";
+  buffer += "\r\n        </select>\r\n        <span class=\"description\">";
   foundHelper = helpers.description;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.description; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "</span>\n        <span class=\"help-inline\">";
+  buffer += escapeExpression(stack1) + "</span>\r\n        <span class=\"help-inline\">";
   foundHelper = helpers.help;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.help; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "</span>\n    </div>\n</div>\n";
+  buffer += escapeExpression(stack1) + "</span>\r\n    </div>\r\n</div>\r\n";
   return buffer;});
 Handlebars.registerPartial('chiropractor_views_templates_formfield_select', t);
 return t;
@@ -2093,7 +2239,7 @@ var t = Handlebars.template(function (Handlebars,depth0,helpers,partials,data) {
 function program1(depth0,data) {
   
   var buffer = "", stack1, foundHelper;
-  buffer += " \n            <input type=\"checkbox\" id=\"";
+  buffer += " \r\n            <input type=\"checkbox\" id=\"";
   foundHelper = helpers.id;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.id; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
@@ -2109,14 +2255,14 @@ function program1(depth0,data) {
   foundHelper = helpers.label;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.label; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "\n        ";
+  buffer += escapeExpression(stack1) + "\r\n        ";
   return buffer;}
 
   buffer += "<div class=\"control-group\" id=\"container-";
   foundHelper = helpers.id;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.id; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "\">\n    <label class=\"control-label\" for=\"";
+  buffer += escapeExpression(stack1) + "\">\r\n    <label class=\"control-label\" for=\"";
   foundHelper = helpers.id;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.id; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
@@ -2124,15 +2270,15 @@ function program1(depth0,data) {
   foundHelper = helpers.label;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.label; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "</label>\n    <div class=\"controls\">\n        ";
+  buffer += escapeExpression(stack1) + "</label>\r\n    <div class=\"controls\">\r\n        ";
   stack1 = depth0.options;
   stack1 = helpers.each.call(depth0, stack1, {hash:{},inverse:self.noop,fn:self.program(1, program1, data)});
   if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "\n        <span class=\"help-inline\">";
+  buffer += "\r\n        <span class=\"help-inline\">";
   foundHelper = helpers.help;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.help; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "</span>\n    </div>\n</div>\n";
+  buffer += escapeExpression(stack1) + "</span>\r\n    </div>\r\n</div>\r\n";
   return buffer;});
 Handlebars.registerPartial('chiropractor_views_templates_formfield_checkbox', t);
 return t;
@@ -2148,7 +2294,7 @@ var t = Handlebars.template(function (Handlebars,depth0,helpers,partials,data) {
 function program1(depth0,data) {
   
   var buffer = "", stack1, foundHelper;
-  buffer += " \n            <input type=\"radio\" id=\"";
+  buffer += " \r\n            <input type=\"radio\" id=\"";
   foundHelper = helpers.id;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.id; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
@@ -2164,14 +2310,14 @@ function program1(depth0,data) {
   foundHelper = helpers.label;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.label; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "\n        ";
+  buffer += escapeExpression(stack1) + "\r\n        ";
   return buffer;}
 
   buffer += "<div class=\"control-group\" id=\"container-";
   foundHelper = helpers.id;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.id; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "\">\n    <label class=\"control-label\" for=\"";
+  buffer += escapeExpression(stack1) + "\">\r\n    <label class=\"control-label\" for=\"";
   foundHelper = helpers.id;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.id; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
@@ -2179,15 +2325,15 @@ function program1(depth0,data) {
   foundHelper = helpers.label;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.label; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "</label>\n    <div class=\"controls\">\n        ";
+  buffer += escapeExpression(stack1) + "</label>\r\n    <div class=\"controls\">\r\n        ";
   stack1 = depth0.options;
   stack1 = helpers.each.call(depth0, stack1, {hash:{},inverse:self.noop,fn:self.program(1, program1, data)});
   if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "\n        <span class=\"help-inline\">";
+  buffer += "\r\n        <span class=\"help-inline\">";
   foundHelper = helpers.help;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.help; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "</span>\n    </div>\n</div>\n";
+  buffer += escapeExpression(stack1) + "</span>\r\n    </div>\r\n</div>\r\n";
   return buffer;});
 Handlebars.registerPartial('chiropractor_views_templates_formfield_radio', t);
 return t;
@@ -2296,16 +2442,20 @@ define('chiropractor/views/formfield',['require','jquery','underscore','handleba
 });
 
 /*global define*/
-define('chiropractor/views',['require','./views/base','./views/form','./views/formfield'],function(require) {
+define('chiropractor/views',['require','./views/base','./views/form','./views/field','./views/row','./views/formfield'],function(require) {
     
 
     var Base = require('./views/base'),
         Form = require('./views/form'),
+        Field = require('./views/field'),
+        Row = require('./views/row'),
         FormField = require('./views/formfield');
 
     return {
         Base: Base,
         Form: Form,
+        Row: Row,
+        Field: Field,
         FormField: FormField
     };
 });
@@ -2448,8 +2598,19 @@ define('chiropractor/models/auth',['require','backbone','jquery','underscore','j
  *
  * Based on https://gist.github.com/echong/3861963
  */
-(function() {
-  var arrays, basicObjects, deepClone, deepExtend, deepExtendCouple, isBasicObject,
+//(function() {
+  /*global define*/
+define('underscore.mixin.deepextend',['require','underscore','backbone'],function(require) {
+    
+
+  var _ = require('underscore'),
+    Backbone = require('backbone'),
+    arrays,
+    basicObjects,
+    deepClone,
+    deepExtend,
+    deepExtendCouple,
+    isBasicObject,
     __slice = [].slice;
 
   deepClone = function(obj) {
@@ -2479,7 +2640,9 @@ define('chiropractor/models/auth',['require','backbone','jquery','underscore','j
   };
 
   isBasicObject = function(object) {
-    if (object == null) return false;
+    if (object === null) {
+      return false;
+    }
     return (object.prototype === {}.prototype || object.prototype === Object.prototype) && _.isObject(object) && !_.isArray(object) && !_.isFunction(object) && !_.isDate(object) && !_.isRegExp(object) && !_.isArguments(object);
   };
 
@@ -2497,7 +2660,7 @@ define('chiropractor/models/auth',['require','backbone','jquery','underscore','j
 
   deepExtendCouple = function(destination, source, maxDepth) {
     var combine, recurse, sharedArrayKey, sharedArrayKeys, sharedObjectKey, sharedObjectKeys, _i, _j, _len, _len1;
-    if (maxDepth == null) {
+    if (maxDepth === null) {
       maxDepth = 20;
     }
     if (maxDepth <= 0) {
@@ -2506,17 +2669,19 @@ define('chiropractor/models/auth',['require','backbone','jquery','underscore','j
     }
     sharedObjectKeys = _.intersection(basicObjects(destination), basicObjects(source));
     recurse = function(key) {
-      return source[key] = deepExtendCouple(destination[key], source[key], maxDepth - 1);
+      source[key] = deepExtendCouple(destination[key], source[key], maxDepth - 1);
+      return source[key];
     };
-    for (_i = 0, _len = sharedObjectKeys.length; _i < _len; _i++) {
+    for (_i = 0, _len = sharedObjectKeys.length; _i < _len; _i+=1) {
       sharedObjectKey = sharedObjectKeys[_i];
       recurse(sharedObjectKey);
     }
     sharedArrayKeys = _.intersection(arrays(destination), arrays(source));
     combine = function(key) {
-      return source[key] = _.union(destination[key], source[key]);
+      source[key] = _.union(destination[key], source[key]);
+      return source[key];
     };
-    for (_j = 0, _len1 = sharedArrayKeys.length; _j < _len1; _j++) {
+    for (_j = 0, _len1 = sharedArrayKeys.length; _j < _len1; _j+=1) {
       sharedArrayKey = sharedArrayKeys[_j];
       combine(sharedArrayKey);
     }
@@ -2551,9 +2716,7 @@ define('chiropractor/models/auth',['require','backbone','jquery','underscore','j
     deepExtend: deepExtend
   });
 
-}).call(this);
-
-define("underscore.mixin.deepextend", function(){});
+});
 
 /**
  * Main source
@@ -3519,7 +3682,7 @@ define("underscore.mixin.deepextend", function(){});
   return Backbone.Validation;
 }));
 /*global define,setTimeout,clearTimeout*/
-define('chiropractor/models',['require','backbone','underscore','./models/auth','backbone.deep.model','backbone.validation'],function(require) {
+define('chiropractor/models',['require','backbone','underscore','./models/auth','backbone.deep.model','backbone.validation','underscore.mixin.deepextend'],function(require) {
     
 
     var Backbone = require('backbone'),
@@ -3529,6 +3692,7 @@ define('chiropractor/models',['require','backbone','underscore','./models/auth',
         Validation = require('backbone.validation'),
         Base;
 
+    require('underscore.mixin.deepextend');
 
     Base = BackboneDeepModel.DeepModel.extend({
         sync: function(method, model, options) {
@@ -3600,11 +3764,13 @@ define('chiropractor/models',['require','backbone','underscore','./models/auth',
 });
 
 /*global define*/
-define('chiropractor/collections',['require','backbone'],function(require) {
+define('chiropractor/collections',['require','backbone','underscore.mixin.deepextend'],function(require) {
     
 
     var Backbone = require('backbone'),
         Base;
+
+    require('underscore.mixin.deepextend');
 
     Base = Backbone.Collection.extend({
     });
@@ -3711,18 +3877,33 @@ define('chiropractor/hbs/ifequal',['require','handlebars'],function(require) {
 });
 
 /*global define*/
-define('chiropractor/hbs',['require','./hbs/view','./hbs/ifequal'],function(require) {
+define('chiropractor/hbs/log',['require','handlebars'],function(require) {
+    
+
+    var Handlebars = require('handlebars');
+
+    function log(context, options) {
+        console.log(context);
+    }
+    Handlebars.registerHelper('log', log);
+
+    return log;
+});
+/*global define*/
+define('chiropractor/hbs',['require','./hbs/view','./hbs/ifequal','./hbs/log'],function(require) {
     
 
     require('./hbs/view');
     require('./hbs/ifequal');
+    require('./hbs/log');
 });
 
 /*global define*/
-define('chiropractor/main',['require','backbone','backbone.subroute','./views','./models','./collections','./routers','./debug','./hbs'],function(require) {
+define('chiropractor/main',['require','backbone','underscore','backbone.subroute','./views','./models','./collections','./routers','./debug','./hbs'],function(require) {
     
 
     var Backbone = require('backbone'),
+        _ = require('underscore'),
         SubRoute = require('backbone.subroute'),
         Views = require('./views'),
         Models = require('./models'),
