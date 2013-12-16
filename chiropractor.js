@@ -1,7 +1,8 @@
 (function () {
-//     Backbone.js 1.0.0
+//     Backbone.js 1.1.0
 
-//     (c) 2010-2013 Jeremy Ashkenas, DocumentCloud Inc.
+//     (c) 2010-2011 Jeremy Ashkenas, DocumentCloud Inc.
+//     (c) 2011-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
 //     Backbone may be freely distributed under the MIT license.
 //     For all details and documentation:
 //     http://backbonejs.org
@@ -38,7 +39,7 @@
   var splice = array.splice;
 
   // Current version of the library. Keep in sync with `package.json`.
-  Backbone.VERSION = '1.0.0';
+  Backbone.VERSION = '1.1.0';
 
   // For Backbone's purposes, jQuery, Zepto, or Ender owns the `$` variable.
   Backbone.$ = $;
@@ -51,7 +52,7 @@
   };
 
   // Turn on `emulateHTTP` to support legacy HTTP servers. Setting this option
-  // will fake `"PUT"` and `"DELETE"` requests via the `_method` parameter and
+  // will fake `"PATCH"`, `"PUT"` and `"DELETE"` requests via the `_method` parameter and
   // set a `X-Http-Method-Override` header.
   Backbone.emulateHTTP = false;
 
@@ -110,7 +111,6 @@
         this._events = {};
         return this;
       }
-
       names = name ? [name] : _.keys(this._events);
       for (i = 0, l = names.length; i < l; i++) {
         name = names[i];
@@ -150,14 +150,15 @@
     // Tell this object to stop listening to either specific events ... or
     // to every object it's currently listening to.
     stopListening: function(obj, name, callback) {
-      var listeners = this._listeners;
-      if (!listeners) return this;
-      var deleteListener = !name && !callback;
-      if (typeof name === 'object') callback = this;
-      if (obj) (listeners = {})[obj._listenerId] = obj;
-      for (var id in listeners) {
-        listeners[id].off(name, callback, this);
-        if (deleteListener) delete this._listeners[id];
+      var listeningTo = this._listeningTo;
+      if (!listeningTo) return this;
+      var remove = !name && !callback;
+      if (!callback && typeof name === 'object') callback = this;
+      if (obj) (listeningTo = {})[obj._listenId] = obj;
+      for (var id in listeningTo) {
+        obj = listeningTo[id];
+        obj.off(name, callback, this);
+        if (remove || _.isEmpty(obj._events)) delete this._listeningTo[id];
       }
       return this;
     }
@@ -214,10 +215,10 @@
   // listening to.
   _.each(listenMethods, function(implementation, method) {
     Events[method] = function(obj, name, callback) {
-      var listeners = this._listeners || (this._listeners = {});
-      var id = obj._listenerId || (obj._listenerId = _.uniqueId('l'));
-      listeners[id] = obj;
-      if (typeof name === 'object') callback = this;
+      var listeningTo = this._listeningTo || (this._listeningTo = {});
+      var id = obj._listenId || (obj._listenId = _.uniqueId('l'));
+      listeningTo[id] = obj;
+      if (!callback && typeof name === 'object') callback = this;
       obj[implementation](name, callback, this);
       return this;
     };
@@ -242,23 +243,17 @@
   // Create a new model with the specified attributes. A client id (`cid`)
   // is automatically generated and assigned for you.
   var Model = Backbone.Model = function(attributes, options) {
-    var defaults;
     var attrs = attributes || {};
     options || (options = {});
     this.cid = _.uniqueId('c');
     this.attributes = {};
-    _.extend(this, _.pick(options, modelOptions));
+    if (options.collection) this.collection = options.collection;
     if (options.parse) attrs = this.parse(attrs, options) || {};
-    if (defaults = _.result(this, 'defaults')) {
-      attrs = _.defaults({}, attrs, defaults);
-    }
+    attrs = _.defaults({}, attrs, _.result(this, 'defaults'));
     this.set(attrs, options);
     this.changed = {};
     this.initialize.apply(this, arguments);
   };
-
-  // A list of options to be attached directly to the model, if provided.
-  var modelOptions = ['url', 'urlRoot', 'collection'];
 
   // Attach all inheritable methods to the Model prototype.
   _.extend(Model.prototype, Events, {
@@ -433,8 +428,17 @@
       var model = this;
       var success = options.success;
       options.success = function(resp) {
-        if (!model.set(model.parse(resp, options), options)) return false;
-        if (success) success(model, resp, options);
+       // console.log('backbone success');
+        //console.log(JSON.stringify(model.parse(resp, options)));
+        if (!model.set(model.parse(resp, options), options)) {
+          //console.log('backbone failed set');
+          return false;
+        }
+        //console.log(JSON.stringify(options.success));
+        //success = true;
+        if (success) {
+          success(model, resp, options);
+        }
         model.trigger('sync', model, resp, options);
       };
       wrapError(this, options);
@@ -455,13 +459,16 @@
         (attrs = {})[key] = val;
       }
 
-      // If we're not waiting and attributes exist, save acts as `set(attr).save(null, opts)`.
-      if (attrs && (!options || !options.wait) && !this.set(attrs, options)) return false;
-
       options = _.extend({validate: true}, options);
 
-      // Do not persist invalid models.
-      if (!this._validate(attrs, options)) return false;
+      // If we're not waiting and attributes exist, save acts as
+      // `set(attr).save(null, opts)` with validation. Otherwise, check if
+      // the model will be valid when the attributes, if any, are set.
+      if (attrs && !options.wait) {
+        if (!this.set(attrs, options)) return false;
+      } else {
+        if (!this._validate(attrs, options)) return false;
+      }
 
       // Set temporary attributes if `{wait: true}`.
       if (attrs && options.wait) {
@@ -562,7 +569,7 @@
       attrs = _.extend({}, this.attributes, attrs);
       var error = this.validationError = this.validate(attrs, options) || null;
       if (!error) return true;
-      this.trigger('invalid', this, error, _.extend(options || {}, {validationError: error}));
+      this.trigger('invalid', this, error, _.extend(options, {validationError: error}));
       return false;
     }
 
@@ -595,7 +602,6 @@
   // its models in sort order, as they're added and removed.
   var Collection = Backbone.Collection = function(models, options) {
     options || (options = {});
-    if (options.url) this.url = options.url;
     if (options.model) this.model = options.model;
     if (options.comparator !== void 0) this.comparator = options.comparator;
     this._reset();
@@ -605,7 +611,7 @@
 
   // Default options for `Collection#set`.
   var setOptions = {add: true, remove: true, merge: true};
-  var addOptions = {add: true, merge: false, remove: false};
+  var addOptions = {add: true, remove: false};
 
   // Define the Collection's inheritable methods.
   _.extend(Collection.prototype, Events, {
@@ -631,16 +637,17 @@
 
     // Add a model, or list of models to the set.
     add: function(models, options) {
-      return this.set(models, _.defaults(options || {}, addOptions));
+      return this.set(models, _.extend({merge: false}, options, addOptions));
     },
 
     // Remove a model, or a list of models from the set.
     remove: function(models, options) {
-      models = _.isArray(models) ? models.slice() : [models];
+      var singular = !_.isArray(models);
+      models = singular ? [models] : _.clone(models);
       options || (options = {});
       var i, l, index, model;
       for (i = 0, l = models.length; i < l; i++) {
-        model = this.get(models[i]);
+        model = models[i] = this.get(models[i]);
         if (!model) continue;
         delete this._byId[model.id];
         delete this._byId[model.cid];
@@ -653,7 +660,7 @@
         }
         this._removeReference(model);
       }
-      return this;
+      return singular ? models[0] : models;
     },
 
     // Update a collection by `set`-ing a new list of models, adding new ones,
@@ -661,31 +668,45 @@
     // already exist in the collection, as necessary. Similar to **Model#set**,
     // the core operation for updating the data contained by the collection.
     set: function(models, options) {
-      options = _.defaults(options || {}, setOptions);
+      options = _.defaults({}, options, setOptions);
       if (options.parse) models = this.parse(models, options);
-      if (!_.isArray(models)) models = models ? [models] : [];
-      var i, l, model, attrs, existing, sort;
+      var singular = !_.isArray(models);
+      models = singular ? (models ? [models] : []) : _.clone(models);
+      var i, l, id, model, attrs, existing, sort;
       var at = options.at;
+      var targetModel = this.model;
       var sortable = this.comparator && (at == null) && options.sort !== false;
       var sortAttr = _.isString(this.comparator) ? this.comparator : null;
       var toAdd = [], toRemove = [], modelMap = {};
+      var add = options.add, merge = options.merge, remove = options.remove;
+      var order = !sortable && add && remove ? [] : false;
 
       // Turn bare objects into model references, and prevent invalid models
       // from being added.
       for (i = 0, l = models.length; i < l; i++) {
-        if (!(model = this._prepareModel(models[i], options))) continue;
+        attrs = models[i];
+        if (attrs instanceof Model) {
+          id = model = attrs;
+        } else {
+          id = attrs[targetModel.prototype.idAttribute];
+        }
 
         // If a duplicate is found, prevent it from being added and
         // optionally merge it into the existing model.
-        if (existing = this.get(model)) {
-          if (options.remove) modelMap[existing.cid] = true;
-          if (options.merge) {
-            existing.set(model.attributes, options);
+        if (existing = this.get(id)) {
+          if (remove) modelMap[existing.cid] = true;
+          if (merge) {
+            attrs = attrs === model ? model.attributes : attrs;
+            if (options.parse) attrs = existing.parse(attrs, options);
+            existing.set(attrs, options);
             if (sortable && !sort && existing.hasChanged(sortAttr)) sort = true;
           }
+          models[i] = existing;
 
-        // This is a new model, push it to the `toAdd` list.
-        } else if (options.add) {
+        // If this is a new, valid model, push it to the `toAdd` list.
+        } else if (add) {
+          model = models[i] = this._prepareModel(attrs, options);
+          if (!model) continue;
           toAdd.push(model);
 
           // Listen to added models' events, and index models for lookup by
@@ -694,10 +715,11 @@
           this._byId[model.cid] = model;
           if (model.id != null) this._byId[model.id] = model;
         }
+        if (order) order.push(existing || model);
       }
 
       // Remove nonexistent models if appropriate.
-      if (options.remove) {
+      if (remove) {
         for (i = 0, l = this.length; i < l; ++i) {
           if (!modelMap[(model = this.models[i]).cid]) toRemove.push(model);
         }
@@ -705,29 +727,35 @@
       }
 
       // See if sorting is needed, update `length` and splice in new models.
-      if (toAdd.length) {
+      if (toAdd.length || (order && order.length)) {
         if (sortable) sort = true;
         this.length += toAdd.length;
         if (at != null) {
-          splice.apply(this.models, [at, 0].concat(toAdd));
+          for (i = 0, l = toAdd.length; i < l; i++) {
+            this.models.splice(at + i, 0, toAdd[i]);
+          }
         } else {
-          push.apply(this.models, toAdd);
+          if (order) this.models.length = 0;
+          var orderedModels = order || toAdd;
+          for (i = 0, l = orderedModels.length; i < l; i++) {
+            this.models.push(orderedModels[i]);
+          }
         }
       }
 
       // Silently sort the collection if appropriate.
       if (sort) this.sort({silent: true});
 
-      if (options.silent) return this;
-
-      // Trigger `add` events.
-      for (i = 0, l = toAdd.length; i < l; i++) {
-        (model = toAdd[i]).trigger('add', model, this, options);
+      // Unless silenced, it's time to fire all appropriate add/sort events.
+      if (!options.silent) {
+        for (i = 0, l = toAdd.length; i < l; i++) {
+          (model = toAdd[i]).trigger('add', model, this, options);
+        }
+        if (sort || (order && order.length)) this.trigger('sort', this, options);
       }
 
-      // Trigger `sort` if the collection was sorted.
-      if (sort) this.trigger('sort', this, options);
-      return this;
+      // Return the added (or merged) model (or models).
+      return singular ? models[0] : models;
     },
 
     // When you have more items than you want to add or remove individually,
@@ -741,16 +769,14 @@
       }
       options.previousModels = this.models;
       this._reset();
-      this.add(models, _.extend({silent: true}, options));
+      models = this.add(models, _.extend({silent: true}, options));
       if (!options.silent) this.trigger('reset', this, options);
-      return this;
+      return models;
     },
 
     // Add a model to the end of the collection.
     push: function(model, options) {
-      model = this._prepareModel(model, options);
-      this.add(model, _.extend({at: this.length}, options));
-      return model;
+      return this.add(model, _.extend({at: this.length}, options));
     },
 
     // Remove a model from the end of the collection.
@@ -762,9 +788,7 @@
 
     // Add a model to the beginning of the collection.
     unshift: function(model, options) {
-      model = this._prepareModel(model, options);
-      this.add(model, _.extend({at: 0}, options));
-      return model;
+      return this.add(model, _.extend({at: 0}, options));
     },
 
     // Remove a model from the beginning of the collection.
@@ -775,14 +799,14 @@
     },
 
     // Slice out a sub-array of models from the collection.
-    slice: function(begin, end) {
-      return this.models.slice(begin, end);
+    slice: function() {
+      return slice.apply(this.models, arguments);
     },
 
     // Get a model from the set by id.
     get: function(obj) {
       if (obj == null) return void 0;
-      return this._byId[obj.id != null ? obj.id : obj.cid || obj];
+      return this._byId[obj.id] || this._byId[obj.cid] || this._byId[obj];
     },
 
     // Get the model at the given index.
@@ -826,16 +850,6 @@
       return this;
     },
 
-    // Figure out the smallest index at which a model should be inserted so as
-    // to maintain order.
-    sortedIndex: function(model, value, context) {
-      value || (value = this.comparator);
-      var iterator = _.isFunction(value) ? value : function(model) {
-        return model.get(value);
-      };
-      return _.sortedIndex(this.models, model, iterator, context);
-    },
-
     // Pluck an attribute from each model in the collection.
     pluck: function(attr) {
       return _.invoke(this.models, 'get', attr);
@@ -868,7 +882,7 @@
       if (!options.wait) this.add(model, options);
       var collection = this;
       var success = options.success;
-      options.success = function(resp) {
+      options.success = function(model, resp, options) {
         if (options.wait) collection.add(model, options);
         if (success) success(model, resp, options);
       };
@@ -902,14 +916,12 @@
         if (!attrs.collection) attrs.collection = this;
         return attrs;
       }
-      options || (options = {});
+      options = options ? _.clone(options) : {};
       options.collection = this;
       var model = new this.model(attrs, options);
-      if (!model._validate(attrs, options)) {
-        this.trigger('invalid', this, attrs, options);
-        return false;
-      }
-      return model;
+      if (!model.validationError) return model;
+      this.trigger('invalid', this, model.validationError, options);
+      return false;
     },
 
     // Internal method to sever a model's ties to a collection.
@@ -941,8 +953,8 @@
     'inject', 'reduceRight', 'foldr', 'find', 'detect', 'filter', 'select',
     'reject', 'every', 'all', 'some', 'any', 'include', 'contains', 'invoke',
     'max', 'min', 'toArray', 'size', 'first', 'head', 'take', 'initial', 'rest',
-    'tail', 'drop', 'last', 'without', 'indexOf', 'shuffle', 'lastIndexOf',
-    'isEmpty', 'chain'];
+    'tail', 'drop', 'last', 'without', 'difference', 'indexOf', 'shuffle',
+    'lastIndexOf', 'isEmpty', 'chain'];
 
   // Mix in each Underscore method as a proxy to `Collection#models`.
   _.each(methods, function(method) {
@@ -981,7 +993,8 @@
   // if an existing element is not provided...
   var View = Backbone.View = function(options) {
     this.cid = _.uniqueId('view');
-    this._configure(options || {});
+    options || (options = {});
+    _.extend(this, _.pick(options, viewOptions));
     this._ensureElement();
     this.initialize.apply(this, arguments);
     this.delegateEvents();
@@ -1000,7 +1013,7 @@
     tagName: 'div',
 
     // jQuery delegate for element lookup, scoped to DOM elements within the
-    // current view. This should be prefered to global lookups where possible.
+    // current view. This should be preferred to global lookups where possible.
     $: function(selector) {
       return this.$el.find(selector);
     },
@@ -1040,7 +1053,7 @@
     //
     //     {
     //       'mousedown .title':  'edit',
-    //       'click .button':     'save'
+    //       'click .button':     'save',
     //       'click .open':       function(e) { ... }
     //     }
     //
@@ -1076,16 +1089,6 @@
     undelegateEvents: function() {
       this.$el.off('.delegateEvents' + this.cid);
       return this;
-    },
-
-    // Performs the initial configuration of a View with a set of options.
-    // Keys with special meaning *(e.g. model, collection, id, className)* are
-    // attached directly to the view.  See `viewOptions` for an exhaustive
-    // list.
-    _configure: function(options) {
-      if (this.options) options = _.extend({}, _.result(this, 'options'), options);
-      _.extend(this, _.pick(options, viewOptions));
-      this.options = options;
     },
 
     // Ensure that the View has a DOM element to render into.
@@ -1173,8 +1176,7 @@
     // If we're sending a `PATCH` request, and we're in an old Internet Explorer
     // that still has ActiveX enabled by default, override jQuery to use that
     // for XHR instead. Remove this line when jQuery supports `PATCH` on IE8.
-    if (params.type === 'PATCH' && window.ActiveXObject &&
-          !(window.external && window.external.msActiveXFilteringEnabled)) {
+    if (params.type === 'PATCH' && noXhrPatch) {
       params.xhr = function() {
         return new ActiveXObject("Microsoft.XMLHTTP");
       };
@@ -1185,6 +1187,8 @@
     model.trigger('request', model, xhr, options);
     return xhr;
   };
+
+  var noXhrPatch = typeof window !== 'undefined' && !!window.ActiveXObject && !(window.XMLHttpRequest && (new XMLHttpRequest).dispatchEvent);
 
   // Map from CRUD to HTTP for our default `Backbone.sync` implementation.
   var methodMap = {
@@ -1274,7 +1278,7 @@
     _routeToRegExp: function(route) {
       route = route.replace(escapeRegExp, '\\$&')
                    .replace(optionalParam, '(?:$1)?')
-                   .replace(namedParam, function(match, optional){
+                   .replace(namedParam, function(match, optional) {
                      return optional ? match : '([^\/]+)';
                    })
                    .replace(splatParam, '(.*?)');
@@ -1324,6 +1328,9 @@
   // Cached regex for removing a trailing slash.
   var trailingSlash = /\/$/;
 
+  // Cached regex for stripping urls of hash and query.
+  var pathStripper = /[?#].*$/;
+
   // Has the history handling already been started?
   History.started = false;
 
@@ -1348,7 +1355,7 @@
         if (this._hasPushState || !this._wantsHashChange || forcePushState) {
           fragment = this.location.pathname;
           var root = this.root.replace(trailingSlash, '');
-          if (!fragment.indexOf(root)) fragment = fragment.substr(root.length);
+          if (!fragment.indexOf(root)) fragment = fragment.slice(root.length);
         } else {
           fragment = this.getHash();
         }
@@ -1364,7 +1371,7 @@
 
       // Figure out the initial configuration. Do we need an iframe?
       // Is pushState desired ... is it available?
-      this.options          = _.extend({}, {root: '/'}, this.options, options);
+      this.options          = _.extend({root: '/'}, this.options, options);
       this.root             = this.options.root;
       this._wantsHashChange = this.options.hashChange !== false;
       this._wantsPushState  = !!this.options.pushState;
@@ -1397,19 +1404,25 @@
       var loc = this.location;
       var atRoot = loc.pathname.replace(/[^\/]$/, '$&/') === this.root;
 
-      // If we've started off with a route from a `pushState`-enabled browser,
-      // but we're currently in a browser that doesn't support it...
-      if (this._wantsHashChange && this._wantsPushState && !this._hasPushState && !atRoot) {
-        this.fragment = this.getFragment(null, true);
-        this.location.replace(this.root + this.location.search + '#' + this.fragment);
-        // Return immediately as browser will do redirect to new url
-        return true;
+      // Transition from hashChange to pushState or vice versa if both are
+      // requested.
+      if (this._wantsHashChange && this._wantsPushState) {
 
-      // Or if we've started out with a hash-based route, but we're currently
-      // in a browser where it could be `pushState`-based instead...
-      } else if (this._wantsPushState && this._hasPushState && atRoot && loc.hash) {
-        this.fragment = this.getHash().replace(routeStripper, '');
-        this.history.replaceState({}, document.title, this.root + this.fragment + loc.search);
+        // If we've started off with a route from a `pushState`-enabled
+        // browser, but we're currently in a browser that doesn't support it...
+        if (!this._hasPushState && !atRoot) {
+          this.fragment = this.getFragment(null, true);
+          this.location.replace(this.root + this.location.search + '#' + this.fragment);
+          // Return immediately as browser will do redirect to new url
+          return true;
+
+        // Or if we've started out with a hash-based route, but we're currently
+        // in a browser where it could be `pushState`-based instead...
+        } else if (this._hasPushState && atRoot && loc.hash) {
+          this.fragment = this.getHash().replace(routeStripper, '');
+          this.history.replaceState({}, document.title, this.root + this.fragment + loc.search);
+        }
+
       }
 
       if (!this.options.silent) return this.loadUrl();
@@ -1438,21 +1451,20 @@
       }
       if (current === this.fragment) return false;
       if (this.iframe) this.navigate(current);
-      this.loadUrl() || this.loadUrl(this.getHash());
+      this.loadUrl();
     },
 
     // Attempt to load the current URL fragment. If a route succeeds with a
     // match, returns `true`. If no defined routes matches the fragment,
     // returns `false`.
-    loadUrl: function(fragmentOverride) {
-      var fragment = this.fragment = this.getFragment(fragmentOverride);
-      var matched = _.any(this.handlers, function(handler) {
+    loadUrl: function(fragment) {
+      fragment = this.fragment = this.getFragment(fragment);
+      return _.any(this.handlers, function(handler) {
         if (handler.route.test(fragment)) {
           handler.callback(fragment);
           return true;
         }
       });
-      return matched;
     },
 
     // Save a fragment into the hash history, or replace the URL state if the
@@ -1464,11 +1476,18 @@
     // you wish to modify the current URL without adding an entry to the history.
     navigate: function(fragment, options) {
       if (!History.started) return false;
-      if (!options || options === true) options = {trigger: options};
-      fragment = this.getFragment(fragment || '');
+      if (!options || options === true) options = {trigger: !!options};
+
+      var url = this.root + (fragment = this.getFragment(fragment || ''));
+
+      // Strip the fragment of the query and hash for matching.
+      fragment = fragment.replace(pathStripper, '');
+
       if (this.fragment === fragment) return;
       this.fragment = fragment;
-      var url = this.root + fragment;
+
+      // Don't include a trailing slash on the root.
+      if (fragment === '' && url !== '/') url = url.slice(0, -1);
 
       // If pushState is available, we use it to set the fragment as a real URL.
       if (this._hasPushState) {
@@ -1491,7 +1510,7 @@
       } else {
         return this.location.assign(url);
       }
-      if (options.trigger) this.loadUrl(fragment);
+      if (options.trigger) return this.loadUrl(fragment);
     },
 
     // Update the hash location, either replacing the current entry, or adding
@@ -1559,7 +1578,7 @@
   };
 
   // Wrap an optional error callback with a fallback error event.
-  var wrapError = function (model, options) {
+  var wrapError = function(model, options) {
     var error = options.error;
     options.error = function(resp) {
       if (error) error(model, resp, options);
@@ -1673,11 +1692,505 @@
     return Backbone.SubRoute;
 }));
 
+/*
+    json2.js
+    2013-05-26
+
+    Public Domain.
+
+    NO WARRANTY EXPRESSED OR IMPLIED. USE AT YOUR OWN RISK.
+
+    See http://www.JSON.org/js.html
+
+
+    This code should be minified before deployment.
+    See http://javascript.crockford.com/jsmin.html
+
+    USE YOUR OWN COPY. IT IS EXTREMELY UNWISE TO LOAD CODE FROM SERVERS YOU DO
+    NOT CONTROL.
+
+
+    This file creates a global JSON object containing two methods: stringify
+    and parse.
+
+        JSON.stringify(value, replacer, space)
+            value       any JavaScript value, usually an object or array.
+
+            replacer    an optional parameter that determines how object
+                        values are stringified for objects. It can be a
+                        function or an array of strings.
+
+            space       an optional parameter that specifies the indentation
+                        of nested structures. If it is omitted, the text will
+                        be packed without extra whitespace. If it is a number,
+                        it will specify the number of spaces to indent at each
+                        level. If it is a string (such as '\t' or '&nbsp;'),
+                        it contains the characters used to indent at each level.
+
+            This method produces a JSON text from a JavaScript value.
+
+            When an object value is found, if the object contains a toJSON
+            method, its toJSON method will be called and the result will be
+            stringified. A toJSON method does not serialize: it returns the
+            value represented by the name/value pair that should be serialized,
+            or undefined if nothing should be serialized. The toJSON method
+            will be passed the key associated with the value, and this will be
+            bound to the value
+
+            For example, this would serialize Dates as ISO strings.
+
+                Date.prototype.toJSON = function (key) {
+                    function f(n) {
+                        // Format integers to have at least two digits.
+                        return n < 10 ? '0' + n : n;
+                    }
+
+                    return this.getUTCFullYear()   + '-' +
+                         f(this.getUTCMonth() + 1) + '-' +
+                         f(this.getUTCDate())      + 'T' +
+                         f(this.getUTCHours())     + ':' +
+                         f(this.getUTCMinutes())   + ':' +
+                         f(this.getUTCSeconds())   + 'Z';
+                };
+
+            You can provide an optional replacer method. It will be passed the
+            key and value of each member, with this bound to the containing
+            object. The value that is returned from your method will be
+            serialized. If your method returns undefined, then the member will
+            be excluded from the serialization.
+
+            If the replacer parameter is an array of strings, then it will be
+            used to select the members to be serialized. It filters the results
+            such that only members with keys listed in the replacer array are
+            stringified.
+
+            Values that do not have JSON representations, such as undefined or
+            functions, will not be serialized. Such values in objects will be
+            dropped; in arrays they will be replaced with null. You can use
+            a replacer function to replace those with JSON values.
+            JSON.stringify(undefined) returns undefined.
+
+            The optional space parameter produces a stringification of the
+            value that is filled with line breaks and indentation to make it
+            easier to read.
+
+            If the space parameter is a non-empty string, then that string will
+            be used for indentation. If the space parameter is a number, then
+            the indentation will be that many spaces.
+
+            Example:
+
+            text = JSON.stringify(['e', {pluribus: 'unum'}]);
+            // text is '["e",{"pluribus":"unum"}]'
+
+
+            text = JSON.stringify(['e', {pluribus: 'unum'}], null, '\t');
+            // text is '[\n\t"e",\n\t{\n\t\t"pluribus": "unum"\n\t}\n]'
+
+            text = JSON.stringify([new Date()], function (key, value) {
+                return this[key] instanceof Date ?
+                    'Date(' + this[key] + ')' : value;
+            });
+            // text is '["Date(---current time---)"]'
+
+
+        JSON.parse(text, reviver)
+            This method parses a JSON text to produce an object or array.
+            It can throw a SyntaxError exception.
+
+            The optional reviver parameter is a function that can filter and
+            transform the results. It receives each of the keys and values,
+            and its return value is used instead of the original value.
+            If it returns what it received, then the structure is not modified.
+            If it returns undefined then the member is deleted.
+
+            Example:
+
+            // Parse the text. Values that look like ISO date strings will
+            // be converted to Date objects.
+
+            myData = JSON.parse(text, function (key, value) {
+                var a;
+                if (typeof value === 'string') {
+                    a =
+/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2}(?:\.\d*)?)Z$/.exec(value);
+                    if (a) {
+                        return new Date(Date.UTC(+a[1], +a[2] - 1, +a[3], +a[4],
+                            +a[5], +a[6]));
+                    }
+                }
+                return value;
+            });
+
+            myData = JSON.parse('["Date(09/09/2001)"]', function (key, value) {
+                var d;
+                if (typeof value === 'string' &&
+                        value.slice(0, 5) === 'Date(' &&
+                        value.slice(-1) === ')') {
+                    d = new Date(value.slice(5, -1));
+                    if (d) {
+                        return d;
+                    }
+                }
+                return value;
+            });
+
+
+    This is a reference implementation. You are free to copy, modify, or
+    redistribute.
+*/
+
+/*jslint evil: true, regexp: true */
+
+/*members "", "\b", "\t", "\n", "\f", "\r", "\"", JSON, "\\", apply,
+    call, charCodeAt, getUTCDate, getUTCFullYear, getUTCHours,
+    getUTCMinutes, getUTCMonth, getUTCSeconds, hasOwnProperty, join,
+    lastIndex, length, parse, prototype, push, replace, slice, stringify,
+    test, toJSON, toString, valueOf
+*/
+
+
+// Create a JSON object only if one does not already exist. We create the
+// methods in a closure to avoid creating global variables.
+
+if (typeof JSON !== 'object') {
+    JSON = {};
+}
+
+(function () {
+    
+
+    function f(n) {
+        // Format integers to have at least two digits.
+        return n < 10 ? '0' + n : n;
+    }
+
+    if (typeof Date.prototype.toJSON !== 'function') {
+
+        Date.prototype.toJSON = function () {
+
+            return isFinite(this.valueOf())
+                ? this.getUTCFullYear()     + '-' +
+                    f(this.getUTCMonth() + 1) + '-' +
+                    f(this.getUTCDate())      + 'T' +
+                    f(this.getUTCHours())     + ':' +
+                    f(this.getUTCMinutes())   + ':' +
+                    f(this.getUTCSeconds())   + 'Z'
+                : null;
+        };
+
+        String.prototype.toJSON      =
+            Number.prototype.toJSON  =
+            Boolean.prototype.toJSON = function () {
+                return this.valueOf();
+            };
+    }
+
+    var cx = /[\u0000\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g,
+        escapable = /[\\\"\x00-\x1f\x7f-\x9f\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g,
+        gap,
+        indent,
+        meta = {    // table of character substitutions
+            '\b': '\\b',
+            '\t': '\\t',
+            '\n': '\\n',
+            '\f': '\\f',
+            '\r': '\\r',
+            '"' : '\\"',
+            '\\': '\\\\'
+        },
+        rep;
+
+
+    function quote(string) {
+
+// If the string contains no control characters, no quote characters, and no
+// backslash characters, then we can safely slap some quotes around it.
+// Otherwise we must also replace the offending characters with safe escape
+// sequences.
+
+        escapable.lastIndex = 0;
+        return escapable.test(string) ? '"' + string.replace(escapable, function (a) {
+            var c = meta[a];
+            return typeof c === 'string'
+                ? c
+                : '\\u' + ('0000' + a.charCodeAt(0).toString(16)).slice(-4);
+        }) + '"' : '"' + string + '"';
+    }
+
+
+    function str(key, holder) {
+
+// Produce a string from holder[key].
+
+        var i,          // The loop counter.
+            k,          // The member key.
+            v,          // The member value.
+            length,
+            mind = gap,
+            partial,
+            value = holder[key];
+
+// If the value has a toJSON method, call it to obtain a replacement value.
+
+        if (value && typeof value === 'object' &&
+                typeof value.toJSON === 'function') {
+            value = value.toJSON(key);
+        }
+
+// If we were called with a replacer function, then call the replacer to
+// obtain a replacement value.
+
+        if (typeof rep === 'function') {
+            value = rep.call(holder, key, value);
+        }
+
+// What happens next depends on the value's type.
+
+        switch (typeof value) {
+        case 'string':
+            return quote(value);
+
+        case 'number':
+
+// JSON numbers must be finite. Encode non-finite numbers as null.
+
+            return isFinite(value) ? String(value) : 'null';
+
+        case 'boolean':
+        case 'null':
+
+// If the value is a boolean or null, convert it to a string. Note:
+// typeof null does not produce 'null'. The case is included here in
+// the remote chance that this gets fixed someday.
+
+            return String(value);
+
+// If the type is 'object', we might be dealing with an object or an array or
+// null.
+
+        case 'object':
+
+// Due to a specification blunder in ECMAScript, typeof null is 'object',
+// so watch out for that case.
+
+            if (!value) {
+                return 'null';
+            }
+
+// Make an array to hold the partial results of stringifying this object value.
+
+            gap += indent;
+            partial = [];
+
+// Is the value an array?
+
+            if (Object.prototype.toString.apply(value) === '[object Array]') {
+
+// The value is an array. Stringify every element. Use null as a placeholder
+// for non-JSON values.
+
+                length = value.length;
+                for (i = 0; i < length; i += 1) {
+                    partial[i] = str(i, value) || 'null';
+                }
+
+// Join all of the elements together, separated with commas, and wrap them in
+// brackets.
+
+                v = partial.length === 0
+                    ? '[]'
+                    : gap
+                    ? '[\n' + gap + partial.join(',\n' + gap) + '\n' + mind + ']'
+                    : '[' + partial.join(',') + ']';
+                gap = mind;
+                return v;
+            }
+
+// If the replacer is an array, use it to select the members to be stringified.
+
+            if (rep && typeof rep === 'object') {
+                length = rep.length;
+                for (i = 0; i < length; i += 1) {
+                    if (typeof rep[i] === 'string') {
+                        k = rep[i];
+                        v = str(k, value);
+                        if (v) {
+                            partial.push(quote(k) + (gap ? ': ' : ':') + v);
+                        }
+                    }
+                }
+            } else {
+
+// Otherwise, iterate through all of the keys in the object.
+
+                for (k in value) {
+                    if (Object.prototype.hasOwnProperty.call(value, k)) {
+                        v = str(k, value);
+                        if (v) {
+                            partial.push(quote(k) + (gap ? ': ' : ':') + v);
+                        }
+                    }
+                }
+            }
+
+// Join all of the member texts together, separated with commas,
+// and wrap them in braces.
+
+            v = partial.length === 0
+                ? '{}'
+                : gap
+                ? '{\n' + gap + partial.join(',\n' + gap) + '\n' + mind + '}'
+                : '{' + partial.join(',') + '}';
+            gap = mind;
+            return v;
+        }
+    }
+
+// If the JSON object does not yet have a stringify method, give it one.
+
+    if (typeof JSON.stringify !== 'function') {
+        JSON.stringify = function (value, replacer, space) {
+
+// The stringify method takes a value and an optional replacer, and an optional
+// space parameter, and returns a JSON text. The replacer can be a function
+// that can replace values, or an array of strings that will select the keys.
+// A default replacer method can be provided. Use of the space parameter can
+// produce text that is more easily readable.
+
+            var i;
+            gap = '';
+            indent = '';
+
+// If the space parameter is a number, make an indent string containing that
+// many spaces.
+
+            if (typeof space === 'number') {
+                for (i = 0; i < space; i += 1) {
+                    indent += ' ';
+                }
+
+// If the space parameter is a string, it will be used as the indent string.
+
+            } else if (typeof space === 'string') {
+                indent = space;
+            }
+
+// If there is a replacer, it must be a function or an array.
+// Otherwise, throw an error.
+
+            rep = replacer;
+            if (replacer && typeof replacer !== 'function' &&
+                    (typeof replacer !== 'object' ||
+                    typeof replacer.length !== 'number')) {
+                throw new Error('JSON.stringify');
+            }
+
+// Make a fake root object containing our value under the key of ''.
+// Return the result of stringifying the value.
+
+            return str('', {'': value});
+        };
+    }
+
+
+// If the JSON object does not yet have a parse method, give it one.
+
+    if (typeof JSON.parse !== 'function') {
+        JSON.parse = function (text, reviver) {
+
+// The parse method takes a text and an optional reviver function, and returns
+// a JavaScript value if the text is a valid JSON text.
+
+            var j;
+
+            function walk(holder, key) {
+
+// The walk method is used to recursively walk the resulting structure so
+// that modifications can be made.
+
+                var k, v, value = holder[key];
+                if (value && typeof value === 'object') {
+                    for (k in value) {
+                        if (Object.prototype.hasOwnProperty.call(value, k)) {
+                            v = walk(value, k);
+                            if (v !== undefined) {
+                                value[k] = v;
+                            } else {
+                                delete value[k];
+                            }
+                        }
+                    }
+                }
+                return reviver.call(holder, key, value);
+            }
+
+
+// Parsing happens in four stages. In the first stage, we replace certain
+// Unicode characters with escape sequences. JavaScript handles many characters
+// incorrectly, either silently deleting them, or treating them as line endings.
+
+            text = String(text);
+            cx.lastIndex = 0;
+            if (cx.test(text)) {
+                text = text.replace(cx, function (a) {
+                    return '\\u' +
+                        ('0000' + a.charCodeAt(0).toString(16)).slice(-4);
+                });
+            }
+
+// In the second stage, we run the text against regular expressions that look
+// for non-JSON patterns. We are especially concerned with '()' and 'new'
+// because they can cause invocation, and '=' because it can cause mutation.
+// But just to be safe, we want to reject all unexpected forms.
+
+// We split the second stage into 4 regexp operations in order to work around
+// crippling inefficiencies in IE's and Safari's regexp engines. First we
+// replace the JSON backslash pairs with '@' (a non-JSON character). Second, we
+// replace all simple value tokens with ']' characters. Third, we delete all
+// open brackets that follow a colon or comma or that begin the text. Finally,
+// we look to see that the remaining characters are only whitespace or ']' or
+// ',' or ':' or '{' or '}'. If that is so, then the text is safe for eval.
+
+            if (/^[\],:{}\s]*$/
+                    .test(text.replace(/\\(?:["\\\/bfnrt]|u[0-9a-fA-F]{4})/g, '@')
+                        .replace(/"[^"\\\n\r]*"|true|false|null|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?/g, ']')
+                        .replace(/(?:^|:|,)(?:\s*\[)+/g, ''))) {
+
+// In the third stage we use the eval function to compile the text into a
+// JavaScript structure. The '{' operator is subject to a syntactic ambiguity
+// in JavaScript: it can begin a block or an object literal. We wrap the text
+// in parens to eliminate the ambiguity.
+
+                j = eval('(' + text + ')');
+
+// In the optional fourth stage, we recursively walk the new structure, passing
+// each name/value pair to a reviver function for possible transformation.
+
+                return typeof reviver === 'function'
+                    ? walk({'': j}, '')
+                    : j;
+            }
+
+// If the text is not JSON parseable, then a SyntaxError is thrown.
+
+            throw new SyntaxError('JSON.parse');
+        };
+    }
+}());
+define("json-ie7", (function (global) {
+    return function () {
+        var ret, fn;
+        return ret || global.JSON;
+    };
+}(this)));
+
 /*global define*/
-define('chiropractor/views/base',['require','underscore','jquery','backbone','handlebars'],function(require) {
+define('chiropractor/views/base',['require','underscore','json-ie7','jquery','backbone','handlebars'],function(require) {
     
 
     var _ = require('underscore'),
+        JSON = require('json-ie7'),
         $ = require('jquery'),
         Backbone = require('backbone'),
         Handlebars = require('handlebars'),
@@ -1768,10 +2281,11 @@ define('chiropractor/views/base',['require','underscore','jquery','backbone','ha
 });
 
 /*global define*/
-define('chiropractor/views/form',['require','underscore','jquery','backbone','./base'],function(require) {
+define('chiropractor/views/form',['require','underscore','json-ie7','jquery','backbone','./base'],function(require) {
     
 
     var _ = require('underscore'),
+        JSON = require('json-ie7'),
         $ = require('jquery'),
         Backbone = require('backbone'),
         Base = require('./base');
@@ -1846,10 +2360,11 @@ return t;
 /* END_TEMPLATE */
 ;
 /*global define*/
-define('chiropractor/views/field',['require','jquery','underscore','handlebars','hbs!./templates/fields/label'],function(require) {
+define('chiropractor/views/field',['require','json-ie7','jquery','underscore','handlebars','hbs!./templates/fields/label'],function(require) {
     
 
-    var $ = require('jquery'),
+    var JSON = require('json-ie7'),
+        $ = require('jquery'),
         _ = require('underscore'),
         Handlebars = require('handlebars'),
         fieldTemplates = {},
@@ -1910,51 +2425,95 @@ var t = Handlebars.template(function (Handlebars,depth0,helpers,partials,data) {
 function program1(depth0,data,depth1) {
   
   var buffer = "", stack1, stack2, stack3, foundHelper;
-  buffer += "\n    <td>";
+  buffer += "\r\n    <td>";
   stack1 = depth1.model;
   stack2 = depth0.fieldtype;
   stack3 = {};
   stack3['field'] = depth0;
   foundHelper = helpers.field;
   stack1 = foundHelper ? foundHelper.call(depth0, stack2, stack1, {hash:stack3}) : helperMissing.call(depth0, "field", stack2, stack1, {hash:stack3});
-  buffer += escapeExpression(stack1) + "</td>\n  ";
+  buffer += escapeExpression(stack1) + "</td>\r\n  ";
   return buffer;}
 
   buffer += "<tr class=\"";
   foundHelper = helpers.rowclass;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.rowclass; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "\">\n  ";
+  buffer += escapeExpression(stack1) + "\">\r\n  ";
   stack1 = depth0.options;
   stack1 = stack1 == null || stack1 === false ? stack1 : stack1.fields;
   stack1 = helpers.each.call(depth0, stack1, {hash:{},inverse:self.noop,fn:self.programWithDepth(program1, data, depth0)});
   if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "\n</tr>";
+  buffer += "\r\n</tr>";
   return buffer;});
 Handlebars.registerPartial('chiropractor_views_templates_row_row', t);
 return t;
 });
 /* END_TEMPLATE */
 ;
+/* START_TEMPLATE */
+define('hbs!chiropractor/views/templates/row/error_messagebox',['hbs','handlebars'], function( hbs, Handlebars ){ 
+var t = Handlebars.template(function (Handlebars,depth0,helpers,partials,data) {
+  helpers = helpers || Handlebars.helpers;
+  var buffer = "", stack1, functionType="function", escapeExpression=this.escapeExpression;
+
+
+  buffer += "<div id=\"chiropractor-error-box\" style=\"color: #a94442;background-color: #f2dede;border-color: #ebccd1;padding: 15px;border: 1px solid transparent;border-radius: 4px;\">\r\n<div aria-hidden=\"true\" style=\"float:right;\" onClick=\"javascript:var element = document.getElementById('chiropractor-error-box');element.parentNode.removeChild(element);\">&times;</div>\r\n<div style=\"font-weight:bold\">";
+  stack1 = depth0.model;
+  stack1 = stack1 == null || stack1 === false ? stack1 : stack1.errorMessage;
+  stack1 = typeof stack1 === functionType ? stack1() : stack1;
+  buffer += escapeExpression(stack1) + "</div>\r\n<div>Message: ";
+  stack1 = depth0.model;
+  stack1 = stack1 == null || stack1 === false ? stack1 : stack1.response;
+  stack1 = stack1 == null || stack1 === false ? stack1 : stack1.responseText;
+  stack1 = typeof stack1 === functionType ? stack1() : stack1;
+  buffer += escapeExpression(stack1) + "</div>\r\n<div>Status: ";
+  stack1 = depth0.model;
+  stack1 = stack1 == null || stack1 === false ? stack1 : stack1.response;
+  stack1 = stack1 == null || stack1 === false ? stack1 : stack1.statusText;
+  stack1 = typeof stack1 === functionType ? stack1() : stack1;
+  buffer += escapeExpression(stack1) + "</div>\r\n<div>StatusCode: ";
+  stack1 = depth0.model;
+  stack1 = stack1 == null || stack1 === false ? stack1 : stack1.response;
+  stack1 = stack1 == null || stack1 === false ? stack1 : stack1.status;
+  stack1 = typeof stack1 === functionType ? stack1() : stack1;
+  buffer += escapeExpression(stack1) + "</div>\r\n<div>Url: <a href=\"";
+  stack1 = depth0.model;
+  stack1 = stack1 == null || stack1 === false ? stack1 : stack1.url;
+  stack1 = typeof stack1 === functionType ? stack1() : stack1;
+  buffer += escapeExpression(stack1) + "\">";
+  stack1 = depth0.model;
+  stack1 = stack1 == null || stack1 === false ? stack1 : stack1.url;
+  stack1 = typeof stack1 === functionType ? stack1() : stack1;
+  buffer += escapeExpression(stack1) + "</a></div>\r\n</div>";
+  return buffer;});
+Handlebars.registerPartial('chiropractor_views_templates_row_error_messagebox', t);
+return t;
+});
+/* END_TEMPLATE */
+;
 /*global define*/
-define('chiropractor/views/row',['require','jquery','underscore','handlebars','hbs!./templates/row/row'],function(require) {
+define('chiropractor/views/row',['require','json-ie7','jquery','underscore','handlebars','hbs!./templates/row/row','hbs!./templates/row/error_messagebox'],function(require) {
     
 
-    var $ = require('jquery'),
+    var JSON = require('json-ie7'),
+        $ = require('jquery'),
         _ = require('underscore'),
         Handlebars = require('handlebars'),
-        rowTemplates = {},
-        row = require('hbs!./templates/row/row');
+        RowTemplates = {},
+        Row = require('hbs!./templates/row/row'),
+        ErrorTemplate = require('hbs!./templates/row/error_messagebox');
 
-        rowTemplates = {
-            'row': row
+        RowTemplates = {
+            'row': Row,
+            'error': ErrorTemplate
         };
 
        Handlebars.registerHelper('row', function(type, model, fieldName) {
             // template helper in the form of:
             //
             //      {{ field 'text' model 'fieldname' [attrName="attrValue"]*}}
-            var current = rowTemplates[type],
+            var current = RowTemplates[type],
                 options = arguments[arguments.length - 1],
                 opts = options.hash || {},
                 id = '',
@@ -1968,9 +2527,9 @@ define('chiropractor/views/row',['require','jquery','underscore','handlebars','h
         });
 
     return {
-        Templates: rowTemplates,
+        Templates: RowTemplates,
         addTemplate: function(name,template) {
-            rowTemplates[name] = template;
+            RowTemplates[name] = template;
         }
     };
 });
@@ -2054,7 +2613,7 @@ var t = Handlebars.template(function (Handlebars,depth0,helpers,partials,data) {
   foundHelper = helpers.id;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.id; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "\">\n    <label class=\"control-label ";
+  buffer += escapeExpression(stack1) + "\">\r\n    <label class=\"control-label ";
   foundHelper = helpers.labelclass;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.labelclass; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
@@ -2066,7 +2625,7 @@ var t = Handlebars.template(function (Handlebars,depth0,helpers,partials,data) {
   foundHelper = helpers.label;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.label; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "</label>\n    <div class=\"controls\">\n        <input type=\"text\" placeholder=\"";
+  buffer += escapeExpression(stack1) + "</label>\r\n    <div class=\"controls\">\r\n        <input type=\"text\" placeholder=\"";
   foundHelper = helpers.placeholder;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.placeholder; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
@@ -2086,15 +2645,15 @@ var t = Handlebars.template(function (Handlebars,depth0,helpers,partials,data) {
   foundHelper = helpers['class'];
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0['class']; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "\" />\n        <span class=\"description\">";
+  buffer += escapeExpression(stack1) + "\" />\r\n        <span class=\"description\">";
   foundHelper = helpers.description;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.description; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "</span>\n        <span class=\"help-inline\">";
+  buffer += escapeExpression(stack1) + "</span>\r\n        <span class=\"help-inline\">";
   foundHelper = helpers.help;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.help; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "</span>\n    </div>\n</div>\n";
+  buffer += escapeExpression(stack1) + "</span>\r\n    </div>\r\n</div>\r\n";
   return buffer;});
 Handlebars.registerPartial('chiropractor_views_templates_formfield_text', t);
 return t;
@@ -2112,7 +2671,7 @@ var t = Handlebars.template(function (Handlebars,depth0,helpers,partials,data) {
   foundHelper = helpers.id;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.id; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "\">\n    <label class=\"control-label\" for=\"";
+  buffer += escapeExpression(stack1) + "\">\r\n    <label class=\"control-label\" for=\"";
   foundHelper = helpers.id;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.id; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
@@ -2120,7 +2679,7 @@ var t = Handlebars.template(function (Handlebars,depth0,helpers,partials,data) {
   foundHelper = helpers.label;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.label; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "</label>\n    <div class=\"controls\">\n        <textarea id=\"";
+  buffer += escapeExpression(stack1) + "</label>\r\n    <div class=\"controls\">\r\n        <textarea id=\"";
   foundHelper = helpers.id;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.id; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
@@ -2132,11 +2691,11 @@ var t = Handlebars.template(function (Handlebars,depth0,helpers,partials,data) {
   foundHelper = helpers.value;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.value; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "</textarea>\n        <span class=\"help-inline\">";
+  buffer += escapeExpression(stack1) + "</textarea>\r\n        <span class=\"help-inline\">";
   foundHelper = helpers.help;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.help; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "</span>\n    </div>\n</div>\n";
+  buffer += escapeExpression(stack1) + "</span>\r\n    </div>\r\n</div>\r\n";
   return buffer;});
 Handlebars.registerPartial('chiropractor_views_templates_formfield_textarea', t);
 return t;
@@ -2152,17 +2711,17 @@ var t = Handlebars.template(function (Handlebars,depth0,helpers,partials,data) {
 function program1(depth0,data) {
   
   var buffer = "", stack1, foundHelper;
-  buffer += "\n                <option value=\"\">";
+  buffer += "\r\n                <option value=\"\">";
   foundHelper = helpers.blank;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.blank; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "</option>\n            ";
+  buffer += escapeExpression(stack1) + "</option>\r\n            ";
   return buffer;}
 
 function program3(depth0,data,depth1) {
   
   var buffer = "", stack1, stack2, foundHelper;
-  buffer += "\n                <option value=\"";
+  buffer += "\r\n                <option value=\"";
   foundHelper = helpers.value;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.value; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
@@ -2176,7 +2735,7 @@ function program3(depth0,data,depth1) {
   foundHelper = helpers.label;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.label; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "</option>\n            ";
+  buffer += escapeExpression(stack1) + "</option>\r\n            ";
   return buffer;}
 function program4(depth0,data) {
   
@@ -2187,7 +2746,7 @@ function program4(depth0,data) {
   foundHelper = helpers.id;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.id; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "\">\n    <label class=\"control-label ";
+  buffer += escapeExpression(stack1) + "\">\r\n    <label class=\"control-label ";
   foundHelper = helpers.labelclass;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.labelclass; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
@@ -2199,7 +2758,7 @@ function program4(depth0,data) {
   foundHelper = helpers.label;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.label; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "</label>\n    <div class=\"controls\">\n        <select id=\"";
+  buffer += escapeExpression(stack1) + "</label>\r\n    <div class=\"controls\">\r\n        <select id=\"";
   foundHelper = helpers.id;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.id; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
@@ -2207,23 +2766,23 @@ function program4(depth0,data) {
   foundHelper = helpers.name;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.name; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "\">\n            ";
+  buffer += escapeExpression(stack1) + "\">\r\n            ";
   stack1 = depth0.blank;
   stack1 = helpers['if'].call(depth0, stack1, {hash:{},inverse:self.noop,fn:self.program(1, program1, data)});
   if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "\n            ";
+  buffer += "\r\n            ";
   stack1 = depth0.options;
   stack1 = helpers.each.call(depth0, stack1, {hash:{},inverse:self.noop,fn:self.programWithDepth(program3, data, depth0)});
   if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "\n        </select>\n        <span class=\"description\">";
+  buffer += "\r\n        </select>\r\n        <span class=\"description\">";
   foundHelper = helpers.description;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.description; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "</span>\n        <span class=\"help-inline\">";
+  buffer += escapeExpression(stack1) + "</span>\r\n        <span class=\"help-inline\">";
   foundHelper = helpers.help;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.help; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "</span>\n    </div>\n</div>\n";
+  buffer += escapeExpression(stack1) + "</span>\r\n    </div>\r\n</div>\r\n";
   return buffer;});
 Handlebars.registerPartial('chiropractor_views_templates_formfield_select', t);
 return t;
@@ -2239,7 +2798,7 @@ var t = Handlebars.template(function (Handlebars,depth0,helpers,partials,data) {
 function program1(depth0,data) {
   
   var buffer = "", stack1, foundHelper;
-  buffer += " \n            <input type=\"checkbox\" id=\"";
+  buffer += " \r\n            <input type=\"checkbox\" id=\"";
   foundHelper = helpers.id;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.id; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
@@ -2255,14 +2814,14 @@ function program1(depth0,data) {
   foundHelper = helpers.label;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.label; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "\n        ";
+  buffer += escapeExpression(stack1) + "\r\n        ";
   return buffer;}
 
   buffer += "<div class=\"control-group\" id=\"container-";
   foundHelper = helpers.id;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.id; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "\">\n    <label class=\"control-label\" for=\"";
+  buffer += escapeExpression(stack1) + "\">\r\n    <label class=\"control-label\" for=\"";
   foundHelper = helpers.id;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.id; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
@@ -2270,15 +2829,15 @@ function program1(depth0,data) {
   foundHelper = helpers.label;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.label; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "</label>\n    <div class=\"controls\">\n        ";
+  buffer += escapeExpression(stack1) + "</label>\r\n    <div class=\"controls\">\r\n        ";
   stack1 = depth0.options;
   stack1 = helpers.each.call(depth0, stack1, {hash:{},inverse:self.noop,fn:self.program(1, program1, data)});
   if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "\n        <span class=\"help-inline\">";
+  buffer += "\r\n        <span class=\"help-inline\">";
   foundHelper = helpers.help;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.help; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "</span>\n    </div>\n</div>\n";
+  buffer += escapeExpression(stack1) + "</span>\r\n    </div>\r\n</div>\r\n";
   return buffer;});
 Handlebars.registerPartial('chiropractor_views_templates_formfield_checkbox', t);
 return t;
@@ -2294,7 +2853,7 @@ var t = Handlebars.template(function (Handlebars,depth0,helpers,partials,data) {
 function program1(depth0,data) {
   
   var buffer = "", stack1, foundHelper;
-  buffer += " \n            <input type=\"radio\" id=\"";
+  buffer += " \r\n            <input type=\"radio\" id=\"";
   foundHelper = helpers.id;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.id; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
@@ -2310,14 +2869,14 @@ function program1(depth0,data) {
   foundHelper = helpers.label;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.label; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "\n        ";
+  buffer += escapeExpression(stack1) + "\r\n        ";
   return buffer;}
 
   buffer += "<div class=\"control-group\" id=\"container-";
   foundHelper = helpers.id;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.id; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "\">\n    <label class=\"control-label\" for=\"";
+  buffer += escapeExpression(stack1) + "\">\r\n    <label class=\"control-label\" for=\"";
   foundHelper = helpers.id;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.id; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
@@ -2325,15 +2884,15 @@ function program1(depth0,data) {
   foundHelper = helpers.label;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.label; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "</label>\n    <div class=\"controls\">\n        ";
+  buffer += escapeExpression(stack1) + "</label>\r\n    <div class=\"controls\">\r\n        ";
   stack1 = depth0.options;
   stack1 = helpers.each.call(depth0, stack1, {hash:{},inverse:self.noop,fn:self.program(1, program1, data)});
   if(stack1 || stack1 === 0) { buffer += stack1; }
-  buffer += "\n        <span class=\"help-inline\">";
+  buffer += "\r\n        <span class=\"help-inline\">";
   foundHelper = helpers.help;
   if (foundHelper) { stack1 = foundHelper.call(depth0, {hash:{}}); }
   else { stack1 = depth0.help; stack1 = typeof stack1 === functionType ? stack1() : stack1; }
-  buffer += escapeExpression(stack1) + "</span>\n    </div>\n</div>\n";
+  buffer += escapeExpression(stack1) + "</span>\r\n    </div>\r\n</div>\r\n";
   return buffer;});
 Handlebars.registerPartial('chiropractor_views_templates_formfield_radio', t);
 return t;
@@ -2341,10 +2900,11 @@ return t;
 /* END_TEMPLATE */
 ;
 /*global define*/
-define('chiropractor/views/formfield',['require','jquery','underscore','handlebars','../hbs/view','./base','hbs!./templates/formfield/text','hbs!./templates/formfield/textarea','hbs!./templates/formfield/select','hbs!./templates/formfield/checkbox','hbs!./templates/formfield/radio'],function(require) {
+define('chiropractor/views/formfield',['require','json-ie7','jquery','underscore','handlebars','../hbs/view','./base','hbs!./templates/formfield/text','hbs!./templates/formfield/textarea','hbs!./templates/formfield/select','hbs!./templates/formfield/checkbox','hbs!./templates/formfield/radio'],function(require) {
     
 
-    var $ = require('jquery'),
+    var JSON = require('json-ie7'),
+        $ = require('jquery'),
         _ = require('underscore'),
         Handlebars = require('handlebars'),
         viewHelper = require('../hbs/view'),
@@ -2461,11 +3021,12 @@ define('chiropractor/views',['require','./views/base','./views/form','./views/fi
 });
 
 /*global define,setTimeout,clearTimeout*/
-define('chiropractor/models/auth',['require','backbone','jquery','underscore','jquery.cookie'],function(require) {
+define('chiropractor/models/auth',['require','backbone','jquery','json-ie7','underscore','jquery.cookie'],function(require) {
     
 
     var Backbone = require('backbone'),
         $ = require('jquery'),
+        JSON = require('json-ie7'),
         _ = require('underscore'),
         tokenCookie = 'wttoken',
         expirationWarningMinutes = 2,
@@ -2880,7 +3441,7 @@ define('underscore.mixin.deepextend',['require','underscore'],function(require) 
 
             // Run validation.
             if (!this._validate(attrs, options)) return false;
-
+            //console.log('set - passed validate');
             // Extract attributes and options.
             unset           = options.unset;
             silent          = options.silent;
@@ -2900,7 +3461,7 @@ define('underscore.mixin.deepextend',['require','underscore'],function(require) 
             //<custom code>
             attrs = objToPaths(attrs);
             //</custom code>
-
+           //console.log(JSON.stringify(attrs));
             // For each `set` attribute, update or delete the current value.
             for (attr in attrs) {
               val = attrs[attr];
@@ -2964,6 +3525,7 @@ define('underscore.mixin.deepextend',['require','underscore'],function(require) 
             }
             this._pending = false;
             this._changing = false;
+            //console.log(JSON.stringify(this));
             return this;
         },
 
@@ -3675,105 +4237,203 @@ define('underscore.mixin.deepextend',['require','underscore'],function(require) 
   }(_));
   return Backbone.Validation;
 }));
+/* START_TEMPLATE */
+define('hbs!chiropractor/views/templates/error/modelfetch',['hbs','handlebars'], function( hbs, Handlebars ){ 
+var t = Handlebars.template(function (Handlebars,depth0,helpers,partials,data) {
+  helpers = helpers || Handlebars.helpers;
+  var stack1, stack2, foundHelper, helperMissing=helpers.helperMissing, escapeExpression=this.escapeExpression;
+
+
+  stack1 = {};
+  stack2 = depth0.response;
+  stack1['response'] = stack2;
+  stack2 = depth0.url;
+  stack1['url'] = stack2;
+  foundHelper = helpers.row;
+  stack1 = foundHelper ? foundHelper.call(depth0, "error", depth0, {hash:stack1}) : helperMissing.call(depth0, "row", "error", depth0, {hash:stack1});
+  return escapeExpression(stack1);});
+Handlebars.registerPartial('chiropractor_views_templates_error_modelfetch', t);
+return t;
+});
+/* END_TEMPLATE */
+;
 /*global define,setTimeout,clearTimeout*/
-define('chiropractor/models',['require','backbone','underscore','./models/auth','backbone.deep.model','backbone.validation','underscore.mixin.deepextend'],function(require) {
-    
+define('chiropractor/models',['require','backbone','underscore','json-ie7','jquery','./models/auth','backbone.deep.model','backbone.validation','hbs!./views/templates/error/modelfetch','underscore.mixin.deepextend'],function (require) {
+  
 
-    var Backbone = require('backbone'),
-        _ = require('underscore'),
-        auth = require('./models/auth'),
-        BackboneDeepModel = require('backbone.deep.model'),
-        Validation = require('backbone.validation'),
-        Base;
+  var Backbone = require('backbone'),
+    _ = require('underscore'),
+    JSON = require('json-ie7'),
+    $ = require('jquery'),
+    auth = require('./models/auth'),
+    BackboneDeepModel = require('backbone.deep.model'),
+    Validation = require('backbone.validation'),
+    TemplateError = require('hbs!./views/templates/error/modelfetch'),
+    Base,
+    Revision,
+    UserAgent,
+    RegExpression;
 
-    require('underscore.mixin.deepextend');
+  // Detecting IE
+  if (navigator.appName === 'Microsoft Internet Explorer') {
+    UserAgent = navigator.userAgent;
+    RegExpression = new RegExp("MSIE ([0-9]{1,}[.0-9]{0,})");
+    if (RegExpression.exec(UserAgent) !== null) {
+      Revision = parseFloat(RegExpression.$1);
+    }
+  }
 
-    Base = BackboneDeepModel.DeepModel.extend({
-        sync: function(method, model, options) {
-            // Setup the authentication handlers for the BaseModel
-            auth.sync.call(this, method, model, options);
+  require('underscore.mixin.deepextend');
 
-            return BackboneDeepModel.DeepModel.prototype.sync.call(
-                this, method, model, options
-            );
-        },
-
-        parse: function(resp, options) {
-            options = options || {};
-            // We need to unwrap the old WiserTogether API envelop format.
-            if (resp.data && resp.meta) {
-                if (parseInt(resp.meta.status, 10) >= 400) {
-                    options.legacyError = true;
-                    if (resp.meta.errors && resp.meta.errors.form) {
-                        this.validationError = resp.meta.errors.form;
-                        this.trigger(
-                            'invalid',
-                            this,
-                            this.validationError,
-                            _.extend(options || {}, {
-                                validationError: this.validationError
-                            })
-                        );
-                    }
-                    else {
-                        this.trigger('error', this, resp.data, options);
-
-                        if (options.error) {
-                            options.error(this, resp.data, options);
-                        }
-                    }
-                    // We do not want an error response to update the model
-                    // attributes (returning an empty object leaves the model
-                    // state as it was
-                    return {};
-                }
-                return resp.data;
-            }
-            return Backbone.Model.prototype.parse.apply(this, arguments);
-        },
-
-        fieldId: function(field, prefix) {
-            prefix = prefix || 'formfield';
-            return [prefix, field, this.cid].join('-');
-        },
-
-        set: function(attrs, options) {
-            // We need to allow the legacy errors to short circuit the Backbone
-            // success handler in the case of a legacy server error.
-            if (options && options.legacyError) {
-                delete options.legacyError;
-                return false;
-            }
-
-            return BackboneDeepModel.DeepModel.prototype.set.apply(this, arguments);
+  Base = BackboneDeepModel.DeepModel.extend({
+    errorHandler: function(response) {
+      var errorMessage;
+      switch(response.status) {
+        case 0:
+          errorMessage = "The API was unreachable";
+          break;
+        case 503:
+          errorMessage = "There was an Error Communicating with the API";
+          break;
+          default:
+      }
+      $('body').before(TemplateError({ url: this.url ,  errorMessage: errorMessage, response: response }));
+    },
+    successHandler: function(model, response, options) {
+    },
+    sync: function (method, model, options) {
+      // Setup the authentication handlers for the BaseModel
+      //
+      if (Revision >= 8 || !Revision) {
+        // Only call auth.sync on ie8+ or other browsers because it currently
+        // doesnt work in ie7
+        auth.sync.call(this, method, model, options);
+      }
+      switch (method) {
+      case 'read':
+        //Empty the error message box for other fetches
+        $('#chiropractor-error-box').empty();
+        if (this.enableErrorHandler) {
+          options.error = this.errorHandler;
+          // Timeout set to 30 seconds.
+          options.timeout = 30000;
         }
-    });
+        break;
+      default:
+      }
+      return Backbone.Model.prototype.sync.call(
+        this, method, model, options
+      );
+    },
+    parse: function (resp, options) {
+      options = options || {};
+      // We need to unwrap the old WiserTogether API envelop format.
+      if (resp.data && resp.meta) {
+        if (parseInt(resp.meta.status, 10) >= 400) {
+          options.legacyError = true;
+          if (resp.meta.errors && resp.meta.errors.form) {
+            this.validationError = resp.meta.errors.form;
+            this.trigger(
+              'invalid',
+              this,
+              this.validationError,
+              _.extend(options || {}, {
+                validationError: this.validationError
+              })
+            );
+          } else {
+            this.trigger('error', this, resp.data, options);
 
-    _.extend(Base.prototype, Validation.mixin);
+            if (options.error) {
+              options.error(this, resp.data, options);
 
-    return {
-        Base: Base,
-        cleanup: auth.cleanup
-    };
+            }
+          }
+          // We do not want an error response to update the model
+          // attributes (returning an empty object leaves the model
+          // state as it was
+          return {};
+        }
+        return resp.data;
+      }
+      return Backbone.Model.prototype.parse.apply(this, arguments);
+    },
+
+    fieldId: function (field, prefix) {
+      prefix = prefix || 'formfield';
+      return [prefix, field, this.cid].join('-');
+    },
+
+    set: function (attrs, options) {
+      // We need to allow the legacy errors to short circuit the Backbone
+      // success handler in the case of a legacy server error.
+      if (options && options.legacyError) {
+        delete options.legacyError;
+        return false;
+      }
+      return BackboneDeepModel.DeepModel.prototype.set.apply(this, arguments);
+    }
+  });
+
+  _.extend(Base.prototype, Validation.mixin);
+
+  return {
+    Base: Base,
+    cleanup: auth.cleanup
+  };
 });
-
 /*global define*/
-define('chiropractor/collections',['require','backbone','underscore.mixin.deepextend'],function(require) {
-    
+define('chiropractor/collections',['require','backbone','underscore','hbs!./views/templates/error/modelfetch','underscore.mixin.deepextend'],function (require) {
+  
 
-    var Backbone = require('backbone'),
-        Base;
+  var Backbone = require('backbone'),
+    _ = require('underscore'),
+    Base,
+    TemplateError = require('hbs!./views/templates/error/modelfetch');
 
-    require('underscore.mixin.deepextend');
+  require('underscore.mixin.deepextend');
 
-    Base = Backbone.Collection.extend({
-    });
+  Base = Backbone.Collection.extend({
+    errorHandler: function (response) {
+      var errorMessage;
+      switch (response.status) {
+      case 0:
+        errorMessage = "The API was unreachable";
+        break;
+      case 503:
+        errorMessage = "There was an Error Communicating with the API";
+        break;
+      default:
+      }
+      $('body').before(TemplateError({
+        url: this.url,
+        errorMessage: errorMessage,
+        response: response
+      }));
+    },
+    sync: function (method, model, options) {
+      switch (method) {
+      case 'read':
+        //Empty the error message box for other fetches
+        $('#chiropractor-error-box').empty();
+        if (this.enableErrorHandler) {
+          options.error = this.errorHandler;
+          // Timeout set to 30 seconds.
+          options.timeout = 30000;
+        }
+        break;
+      default:
+      }
+      return Backbone.Collection.prototype.sync.call(
+        this, method, model, options
+      );
+    }
+  });
 
-    return {
-        Base: Base
-    };
+  return {
+    Base: Base
+  };
 });
-
 /*global define*/
 define('chiropractor/routers',['require','backbone'],function(require) {
     
@@ -3871,13 +4531,14 @@ define('chiropractor/hbs/ifequal',['require','handlebars'],function(require) {
 });
 
 /*global define*/
-define('chiropractor/hbs/log',['require','handlebars'],function(require) {
+define('chiropractor/hbs/log',['require','handlebars','json-ie7'],function(require) {
     
 
-    var Handlebars = require('handlebars');
+    var Handlebars = require('handlebars'),
+    JSON = require('json-ie7');
 
     function log(context, options) {
-        console.log(context);
+        console.log(JSON.stringify(context));
     }
     Handlebars.registerHelper('log', log);
 
