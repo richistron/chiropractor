@@ -3160,15 +3160,15 @@ define('chiropractor/models/auth',['require','backbone','jquery','json-ie7','und
  * Based on https://gist.github.com/echong/3861963
  */
 //(function() {
-  /*global define*/
-define('underscore.mixin.deepextend',['require','underscore'],function(require) {
-    
+/*global define*/
+define('underscore.mixin.deepextend',['require','underscore'],function (require) {
+  
 
   var _ = require('underscore'),
-  arrays, basicObjects, deepClone, deepExtend, deepExtendCouple, isBasicObject,
+    arrays, basicObjects, deepClone, deepExtend, deepExtendCouple, isBasicObject,
     __slice = [].slice;
 
-  deepClone = function(obj) {
+  deepClone = function (obj) {
     var func, isArr;
     if (!_.isObject(obj) || _.isFunction(obj)) {
       return obj;
@@ -3183,7 +3183,7 @@ define('underscore.mixin.deepextend',['require','underscore'],function(require) 
       return new RegExp(obj.source, obj.toString().replace(/.*\//, ""));
     }
     isArr = _.isArray(obj || _.isArguments(obj));
-    func = function(memo, value, key) {
+    func = function (memo, value, key) {
       if (isArr) {
         memo.push(deepClone(value));
       } else {
@@ -3194,26 +3194,26 @@ define('underscore.mixin.deepextend',['require','underscore'],function(require) 
     return _.reduce(obj, func, isArr ? [] : {});
   };
 
-  isBasicObject = function(object) {
-    if (object === null) {
+  isBasicObject = function (object) {
+    if (object === null || object === undefined) {
       return false;
     }
     return (object.prototype === {}.prototype || object.prototype === Object.prototype) && _.isObject(object) && !_.isArray(object) && !_.isFunction(object) && !_.isDate(object) && !_.isRegExp(object) && !_.isArguments(object);
   };
 
-  basicObjects = function(object) {
-    return _.filter(_.keys(object), function(key) {
+  basicObjects = function (object) {
+    return _.filter(_.keys(object), function (key) {
       return isBasicObject(object[key]);
     });
   };
 
-  arrays = function(object) {
-    return _.filter(_.keys(object), function(key) {
+  arrays = function (object) {
+    return _.filter(_.keys(object), function (key) {
       return _.isArray(object[key]);
     });
   };
 
-  deepExtendCouple = function(destination, source, maxDepth) {
+  deepExtendCouple = function (destination, source, maxDepth) {
     var combine, recurse, sharedArrayKey, sharedArrayKeys, sharedObjectKey, sharedObjectKeys, _i, _j, _len, _len1;
     if (maxDepth === null) {
       maxDepth = 20;
@@ -3223,27 +3223,27 @@ define('underscore.mixin.deepextend',['require','underscore'],function(require) 
       return _.extend(destination, source);
     }
     sharedObjectKeys = _.intersection(basicObjects(destination), basicObjects(source));
-    recurse = function(key) {
+    recurse = function (key) {
       source[key] = deepExtendCouple(destination[key], source[key], maxDepth - 1);
       return source[key];
     };
-    for (_i = 0, _len = sharedObjectKeys.length; _i < _len; _i+=1) {
+    for (_i = 0, _len = sharedObjectKeys.length; _i < _len; _i += 1) {
       sharedObjectKey = sharedObjectKeys[_i];
       recurse(sharedObjectKey);
     }
     sharedArrayKeys = _.intersection(arrays(destination), arrays(source));
-    combine = function(key) {
+    combine = function (key) {
       source[key] = _.union(destination[key], source[key]);
       return source[key];
     };
-    for (_j = 0, _len1 = sharedArrayKeys.length; _j < _len1; _j+=1) {
+    for (_j = 0, _len1 = sharedArrayKeys.length; _j < _len1; _j += 1) {
       sharedArrayKey = sharedArrayKeys[_j];
       combine(sharedArrayKey);
     }
     return _.extend(destination, source);
   };
 
-  deepExtend = function() {
+  deepExtend = function () {
     var finalObj, maxDepth, objects, _i;
     objects = 2 <= arguments.length ? __slice.call(arguments, 0, _i = arguments.length - 1) : (_i = 0, []), maxDepth = arguments[_i++];
     if (!_.isNumber(maxDepth)) {
@@ -3272,7 +3272,6 @@ define('underscore.mixin.deepextend',['require','underscore'],function(require) 
   });
 
 });
-
 /**
  * Main source
  */
