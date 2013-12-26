@@ -1857,7 +1857,8 @@ if (typeof JSON !== 'object') {
     JSON = {};
 }
 
-(function () {
+/*global define*/
+define('json-ie7',['require'],function(require) {
     
 
     function f(n) {
@@ -2177,13 +2178,7 @@ if (typeof JSON !== 'object') {
             throw new SyntaxError('JSON.parse');
         };
     }
-}());
-define("json-ie7", (function (global) {
-    return function () {
-        var ret, fn;
-        return ret || global.JSON;
-    };
-}(this)));
+});
 
 /*global define*/
 define('chiropractor/views/base',['require','underscore','json-ie7','jquery','backbone','handlebars'],function(require) {
@@ -2371,7 +2366,7 @@ define('chiropractor/views/field',['require','json-ie7','jquery','underscore','h
         label = require('hbs!./templates/fields/label');
 
         fieldTemplates = {
-            'default': label
+            'defaults': label
         };
 
        Handlebars.registerHelper('field', function(type, model, fieldName) {
@@ -2386,7 +2381,7 @@ define('chiropractor/views/field',['require','json-ie7','jquery','underscore','h
                 value = '';
 
             if (!template) {
-               template = fieldTemplates.default;
+               template = fieldTemplates.defaults;
             }
 
             if (model) {
