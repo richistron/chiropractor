@@ -5,8 +5,13 @@ Installation:
 
 * copy jquery.cors folder to your application root folder
   example:
-  `cp src/components/chiropractor/jquery.cors src/ -r`
+
+```
+cp src/components/chiropractor/jquery.cors src/ -r
+```
+
 * add shim values
+
 ```
 require.config({
   paths:{
@@ -27,7 +32,10 @@ require.config({
     'console-shim': { exports: 'console' }
   }
 });
+```
+
 * overwrite jQuery.ajax
+
 ```
 require('jquery');
 require('jquery.cors/jquery.cors');
